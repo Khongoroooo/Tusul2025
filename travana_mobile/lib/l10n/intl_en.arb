@@ -1,0 +1,12 @@
+{
+  "@@locale": "mn",
+  "email": "E-mail",
+  "password": "Password",
+  "forgotPassword": "Forgot password?",
+  "forgotPasswordDialogTitle": "Forgot password",
+  "forgotPasswordDialogContent": "Forgot password functionality goes here.",
+  "close": "Close",
+  "signIn": "Sign in",
+  "signUp": "Sign up",
+  "fillAllFields": "Please fill all fields!"
+}

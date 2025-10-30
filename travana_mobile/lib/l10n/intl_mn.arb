@@ -1,0 +1,12 @@
+{
+  "@@locale": "mn",
+  "email": "И-мэйл",
+  "password": "Нууц үг",
+  "forgotPassword": "Нууц үгээ мартсан?",
+  "forgotPasswordDialogTitle": "Нууц үг мартсан",
+  "forgotPasswordDialogContent": "Нууц үг сэргээх үйлдэл энд явна.",
+  "close": "Хаах",
+  "signIn": "Нэвтрэх",
+  "signUp": "Бүртгүүлэх",
+  "fillAllFields": "Бүх талбарыг бөглөнө үү!"
+}
