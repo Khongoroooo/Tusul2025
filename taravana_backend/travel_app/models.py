@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 class Country(models.Model):
     name = models.CharField(max_length=150)
     description = models.TextField()
-    image = models.CharField(max_length=255, blank=True, null=True)
+    image = models.ImageField(upload_to='countries/',blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -33,7 +33,7 @@ class Place(models.Model):
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='places')
     name = models.CharField(max_length=150)
     description = models.TextField()
-    image = models.CharField(max_length=255, blank=True, null=True)
+    image = models.ImageField(upload_to='place/', blank=True, null=True)
     tags = models.CharField(max_length=255, blank=True, null=True)
     priority = models.CharField(max_length=20, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -49,7 +49,7 @@ class Blog(models.Model):
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='blogs')
     title = models.CharField(max_length=255)
     content = models.TextField()
-    image = models.CharField(max_length=255, blank=True, null=True)
+    image = models.ImageField(upload_to='blog/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
