@@ -17,7 +17,7 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
-from travel_app.views import CountryViewSet
+from travel_app.views import CountryViewSet,PlaceViewSet, TripViewSet
 from django.conf.urls.static import static
 from rest_framework import routers
 
@@ -27,12 +27,21 @@ from django.conf import settings
 
 router = routers.DefaultRouter()
 router.register(r'countries',CountryViewSet)
+router.register(r'places',PlaceViewSet)
+router.register(r'trips',TripViewSet)
+
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path('auth/', include('djoser.urls')),
+    # 2. Djoser-ийн JWT Login/Logout
+    path('auth/', include('djoser.urls.jwt')),
+    # 3. DRF Simple JWT-ийн Token-уудыг шууд ашиглах (Нэвтрэх, Сэргээх)
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/', include(router.urls)),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),  # login
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'), # token shinechleh
+  
 ]
 
 if settings.DEBUG:

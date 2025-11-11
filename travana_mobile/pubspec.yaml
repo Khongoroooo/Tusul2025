@@ -11,7 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  shared_preferences: ^2.2.0
   cupertino_icons: ^1.0.8
   iconsax: ^0.0.8
   flutter_localizations:

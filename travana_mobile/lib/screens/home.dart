@@ -58,6 +58,7 @@ class _HomeState extends State<Home> {
       appBar: TopBar(),
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
               padding: const EdgeInsets.all(12),
@@ -68,56 +69,61 @@ class _HomeState extends State<Home> {
               ),
             ),
 
-            Expanded(
+            // ✅ Instagram Highlights Style Section
+            SizedBox(
+              height: 110,
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : GridView.builder(
+                  : ListView.builder(
+                      scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 0.8,
-                      ),
                       itemCount: filteredCountries.length,
                       itemBuilder: (context, index) {
                         final country = filteredCountries[index];
-                        final imageUrl = country['image']; // Backend-аас ирсэн URL
+                        final imageUrl = country['image'];
 
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.3),
-                                blurRadius: 6,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              ClipRRect(
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(16),
+                              Container(
+                                width: 70,
+                                height: 70,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors
+                                        .pinkAccent, // highlight border color
+                                    width: 3,
+                                  ),
                                 ),
-                                child: Image.network(
-                                  imageUrl,
-                                  height: 120,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
+                                child: ClipOval(
+                                  child: Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
                               ),
-                              Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Text(
-                                  country['name'],
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
+                              const SizedBox(height: 6),
+                              SizedBox(
+                                width: 70,
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      country['name'],
+
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    Text(
+                                      country['description'],
+
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -38,15 +39,30 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "rest_framework_simplejwt.token_blacklist",
+    'djoser',
+   'rest_framework_simplejwt',
     "corsheaders",
     "travel_app",
 ]
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication', 
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        # Зөвхөн нэвтэрсэн хэрэглэгч API-г ашиглах (Жишээ нь, Trip үүсгэх)
+        'rest_framework.permissions.IsAuthenticated', 
     )
+    
 }
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=7),       # Access token → 7 хоног
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),     # Refresh token → 30 хоног
+    "ROTATE_REFRESH_TOKENS": True,                    # Refresh хийхэд шинэ token үүсгэнэ
+    "BLACKLIST_AFTER_ROTATION": True,                 # Хуучин refresh token-ыг blacklist-дэнэ
+}
+
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -79,7 +95,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "taravana_backend.wsgi.application"
-
+AUTH_USER_MODEL = 'travel_app.CustomUser'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -87,7 +103,7 @@ WSGI_APPLICATION = "taravana_backend.wsgi.application"
 DATABASES = {
     "default": {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'travel_db',
+        'NAME': 'travana_db',
         'USER': 'postgres',
         'PASSWORD': '12345678',
         'HOST': 'localhost',
