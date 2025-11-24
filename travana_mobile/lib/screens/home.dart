@@ -39,16 +39,18 @@ class _HomeState extends State<Home> {
     }
   }
 
-  void _filterSearch(String query) {
-    final results = countries.where((country) {
-      final name = country['name'].toString().toLowerCase();
-      final input = query.toLowerCase();
-      return name.contains(input);
-    }).toList();
+  void _filterSearch(String query) async {
+    final url = Uri.parse('http://127.0.0.1:8000/api/countries/?search=$query');
+    final responce = await http.get(url);
 
-    setState(() {
-      filteredCountries = results;
-    });
+    if (responce.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(responce.body);
+      setState(() {
+        filteredCountries = data;
+      });
+    } else {
+      print("Error: ${responce.statusCode}");
+    }
   }
 
   @override

@@ -13,29 +13,56 @@ class CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 2, spreadRadius: 1),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(
+        left: 20,
+        right: 20,
+        bottom: 20, // доороосоо зай
       ),
-      child: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        currentIndex: currentIndex,
-        selectedItemColor: Colors.pinkAccent,
-        unselectedItemColor: Colors.grey,
-        onTap: onTap,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Iconsax.home), label: ''),
-          BottomNavigationBarItem(icon: Icon(Iconsax.document), label: ''),
-          BottomNavigationBarItem(icon: Icon(Iconsax.airplane), label: ''),
-          BottomNavigationBarItem(icon: Icon(Iconsax.activity), label: ''),
-          BottomNavigationBarItem(icon: Icon(Iconsax.user), label: ''),
-        ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(40),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(5, (index) {
+            final icons = [
+              Iconsax.home,
+              Iconsax.shopping_bag,
+              Iconsax.heart,
+              Iconsax.message,
+              Iconsax.user,
+            ];
+
+            final isSelected = currentIndex == index;
+
+            return GestureDetector(
+              onTap: () => onTap(index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isSelected ? Color.fromARGB(255, 238, 128, 139) : Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icons[index],
+                  size: 24,
+                  color: isSelected ? Colors.white : Colors.black,
+                ),
+              ),
+            );
+          }),
+        ),
       ),
     );
   }

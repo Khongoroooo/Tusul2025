@@ -104,14 +104,16 @@ class UserBadge(models.Model):
 # --------------------------
 class Trip(models.Model):
     STATUS_CHOICES = (
-        ('planned', 'Planned'),
-        ('completed', 'Completed'),
+        ('planned', 'planned'),
+        ('completed', 'completed'),
     )
 
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='trips')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='trips',blank=True, null=True)
     place = models.ForeignKey(Place, on_delete=models.CASCADE, related_name='trips')
     start_date = models.DateField()
+    title = models.CharField(max_length=100, blank=False, null=False)
     end_date = models.DateField()
+    budget = models.IntegerField(blank=True, null=True)
     image = models.ImageField(upload_to='trips/', blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planned')
     notes = models.TextField(blank=True, null=True)

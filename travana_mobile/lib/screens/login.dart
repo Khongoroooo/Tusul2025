@@ -79,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
-              'images/travana_logo.png',
+              'images/logo.png',
               width: screenWidth * 0.8,
               height: screenHeight * 0.25,
             ),
@@ -98,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
                   borderSide: const BorderSide(
-                    color: Colors.pinkAccent,
+                    color: Color(0xFFF8AEB6),
                     width: 1,
                   ),
                 ),
@@ -178,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: handleLogin,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
-                backgroundColor: Colors.pinkAccent,
+                backgroundColor: Color.fromARGB(255, 252, 169, 178),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
                 ),

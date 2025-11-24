@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:travana_mobile/screens/bucket_list.dart';
 import 'package:travana_mobile/screens/home.dart';
+import 'package:travana_mobile/screens/profile.dart';
 import 'package:travana_mobile/screens/trip_bucket_list.dart';
 // import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav.dart';
@@ -17,10 +17,11 @@ class _HomePageState extends State<HomePage> {
 
   final List<Widget> _pages = [
     Home(),
-    BucketListPage(),
-    Center(child: Text('Flights Page', style: TextStyle(fontSize: 20))),
     TripListPage(),
-    Center(child: Text('Profile Page', style: TextStyle(fontSize: 20))),
+    Center(child: Text('Flights Page', style: TextStyle(fontSize: 20))),
+
+    Center(child: Text('Flights Page', style: TextStyle(fontSize: 20))),
+    ProfilePage(),
   ];
 
   @override

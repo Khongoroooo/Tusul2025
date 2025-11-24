@@ -22,7 +22,7 @@ class TopBar extends StatelessWidget implements PreferredSizeWidget {
               Row(
                 children: [
                   Image.asset(
-                    'images/topbar_logo.png',
+                    'images/logo.png',
                     width: 150,
                     height: 174,
                   ),

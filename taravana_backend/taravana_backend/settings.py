@@ -40,9 +40,10 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     'djoser',
-   'rest_framework_simplejwt',
+    'rest_framework_simplejwt',
     "corsheaders",
     "travel_app",
+    'django_filters',
 ]
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -52,6 +53,10 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         # Зөвхөн нэвтэрсэн хэрэглэгч API-г ашиглах (Жишээ нь, Trip үүсгэх)
         'rest_framework.permissions.IsAuthenticated', 
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
     )
     
 }
