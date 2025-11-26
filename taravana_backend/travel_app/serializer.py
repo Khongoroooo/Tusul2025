@@ -36,6 +36,7 @@ class PlaceSerializer(serializers.ModelSerializer):
         model = Place
         fields = '__all__'
 class TripSerializer(serializers.ModelSerializer):
+    # place_name = serializers.CharField(source = 'place_name', read_only = True)
     class Meta:
         model = Trip
         fields = '__all__'

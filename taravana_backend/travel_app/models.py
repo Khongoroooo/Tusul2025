@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User, AbstractUser
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
@@ -116,6 +117,14 @@ class Trip(models.Model):
     budget = models.IntegerField(blank=True, null=True)
     image = models.ImageField(upload_to='trips/', blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planned')
+    def save(self, *args, **kwargs):
+        today  = timezone.now().date()
+        if self.end_date < today:
+            self.status = 'completed'
+        else:
+            self.status = 'planned'
+
+        super().save(*args, **kwargs)
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -50,6 +50,55 @@ class _TripListPageState extends State<TripListPage> {
     }
   }
 
+  // ⭐ DELETE METHOD
+  Future<void> deleteTrip(int id) async {
+    final url = Uri.parse("http://localhost:8000/api/trips/$id/");
+    try {
+      final response = await http.delete(url);
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        setState(() {
+          trips.removeWhere((t) => t['id'] == id);
+          filterTrips.removeWhere((t) => t['id'] == id);
+        });
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  // ⭐ RENAME DIALOG
+  void _showRenameDialog(dynamic trip) {
+    final controller = TextEditingController(text: trip['title']);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Rename trip"),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(hintText: "New title"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  trip['title'] = controller.text;
+                });
+                Navigator.pop(context);
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   List<dynamic> get displayedTrips {
     final query = _searchController.text.toLowerCase();
     return filterTrips.where((trip) {
@@ -62,7 +111,6 @@ class _TripListPageState extends State<TripListPage> {
           .toString()
           .toLowerCase()
           .contains(query);
-
       return statusMatch && (titleMatch || placeMatch);
     }).toList();
   }
@@ -80,7 +128,6 @@ class _TripListPageState extends State<TripListPage> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-
       body: SafeArea(
         child: Column(
           children: [
@@ -135,7 +182,7 @@ class _TripListPageState extends State<TripListPage> {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const TripDetail(),
+                              builder: (context) => TripDetail(trip: item),
                             ),
                           ),
                           child: Card(
@@ -148,16 +195,22 @@ class _TripListPageState extends State<TripListPage> {
                                 Expanded(
                                   child: Stack(
                                     children: [
-                                      // IMAGE OR GREY BOX
+                                      // IMAGE
                                       ClipRRect(
                                         borderRadius:
                                             const BorderRadius.vertical(
                                               top: Radius.circular(15),
+                                              bottom: Radius.circular(15),
                                             ),
                                         child: Container(
                                           width: double.infinity,
                                           height: double.infinity,
-                                          color: const Color.fromARGB(255, 251, 251, 251),
+                                          color: const Color.fromARGB(
+                                            255,
+                                            251,
+                                            251,
+                                            251,
+                                          ),
                                           child: item['image'] != null
                                               ? Image.network(
                                                   item['image']
@@ -178,7 +231,7 @@ class _TripListPageState extends State<TripListPage> {
                                         ),
                                       ),
 
-                                      // STATUS
+                                      // STATUS LABEL
                                       Positioned(
                                         top: 10,
                                         left: 10,
@@ -205,6 +258,123 @@ class _TripListPageState extends State<TripListPage> {
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
+                                        ),
+                                      ),
+
+                                      // ⭐ MENU BUTTON (PopupMenu)
+                                      Positioned(
+                                        top: 5,
+                                        right: 1,
+                                        child: PopupMenuButton<String>(
+                                          onSelected: (value) {
+                                            if (value == 'edit') {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      TripDetail(trip: item),
+                                                ),
+                                              );
+                                            } else if (value == 'rename') {
+                                              _showRenameDialog(item);
+                                            } else if (value == 'delete') {
+                                              showDialog(
+                                                context: context,
+                                                builder: (_) => AlertDialog(
+                                                  title: const Text(
+                                                    'Delete trip?',
+                                                  ),
+                                                  content: const Text(
+                                                    "Are you sure you want to delete this trip?",
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            context,
+                                                          ),
+                                                      child: const Text(
+                                                        "Cancel",
+                                                      ),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () async {
+                                                        Navigator.pop(context);
+                                                        await deleteTrip(
+                                                          item['id'],
+                                                        );
+                                                      },
+                                                      child: const Text(
+                                                        'Delete', style: TextStyle(color: Colors.red),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          color: Colors.white,
+                                          elevation: 6,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.more_vert,
+                                            color: Color.fromARGB(
+                                              255,
+                                              200,
+                                              200,
+                                              200,
+                                            ),
+                                            size: 22,
+                                          ),
+                                          itemBuilder: (context) => [
+                                            const PopupMenuItem(
+                                              value: 'edit',
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.edit, size: 18),
+                                                  SizedBox(width: 10),
+                                                  Text("Edit trip"),
+                                                ],
+                                              ),
+                                            ),
+                                            const PopupMenuItem(
+                                              value: 'rename',
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons
+                                                        .drive_file_rename_outline,
+                                                    size: 18,
+                                                  ),
+                                                  SizedBox(width: 10),
+                                                  Text("Rename"),
+                                                ],
+                                              ),
+                                            ),
+                                            const PopupMenuItem(
+                                              value: 'delete',
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.delete,
+                                                    color: Colors.red,
+                                                    size: 18,
+                                                  ),
+                                                  SizedBox(width: 10),
+                                                  Text(
+                                                    "Delete",
+                                                    style: TextStyle(
+                                                      color: Colors.red,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
 
@@ -261,7 +431,6 @@ class _TripListPageState extends State<TripListPage> {
           ],
         ),
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final newTrip = await showModalBottomSheet(
@@ -327,9 +496,10 @@ class SearchBarWidget extends StatelessWidget {
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hintText,
-        prefixIcon: const Icon(Iconsax.search_normal, color: Colors.grey),
+        prefixIcon: const Icon(Icons.search),
         filled: true,
-        fillColor: Colors.grey[100],
+        fillColor: Colors.grey.shade200,
+        contentPadding: const EdgeInsets.all(12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
