@@ -21,5 +21,40 @@ class MessageLookup extends MessageLookupByLibrary {
   String get localeName => 'en';
 
   final messages = _notInlinedMessages(_notInlinedMessages);
-  static Map<String, Function> _notInlinedMessages(_) => <String, Function>{};
+  static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
+    "close": MessageLookupByLibrary.simpleMessage("Close"),
+    "email": MessageLookupByLibrary.simpleMessage("E-mail"),
+    "fillAllFields": MessageLookupByLibrary.simpleMessage(
+      "Please fill all fields!",
+    ),
+    "forgotPassword": MessageLookupByLibrary.simpleMessage("Forgot password?"),
+    "forgotPasswordDialogContent": MessageLookupByLibrary.simpleMessage(
+      "Password recovery functionality goes here.",
+    ),
+    "forgotPasswordDialogTitle": MessageLookupByLibrary.simpleMessage(
+      "Forgot password",
+    ),
+    "fullName": MessageLookupByLibrary.simpleMessage("Full name"),
+    "haveAccountSignIn": MessageLookupByLibrary.simpleMessage(
+      "Already have an account? Sign in",
+    ),
+    "invalidEmail": MessageLookupByLibrary.simpleMessage(
+      "Invalid email address",
+    ),
+    "password": MessageLookupByLibrary.simpleMessage("Password"),
+    "passwordNotMatch": MessageLookupByLibrary.simpleMessage(
+      "Passwords do not match",
+    ),
+    "reEnterPassword": MessageLookupByLibrary.simpleMessage(
+      "Re-enter password",
+    ),
+    "registerSuccess": MessageLookupByLibrary.simpleMessage(
+      "Registration successful!",
+    ),
+    "signIn": MessageLookupByLibrary.simpleMessage("Sign in"),
+    "signUp": MessageLookupByLibrary.simpleMessage("Sign up"),
+    "weakPassword": MessageLookupByLibrary.simpleMessage(
+      "Password is too weak",
+    ),
+  };
 }

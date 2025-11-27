@@ -84,10 +84,10 @@ class S {
     );
   }
 
-  /// `Forgot password functionality goes here.`
+  /// `Password recovery functionality goes here.`
   String get forgotPasswordDialogContent {
     return Intl.message(
-      'Forgot password functionality goes here.',
+      'Password recovery functionality goes here.',
       name: 'forgotPasswordDialogContent',
       desc: '',
       args: [],
@@ -114,6 +114,71 @@ class S {
     return Intl.message(
       'Please fill all fields!',
       name: 'fillAllFields',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Re-enter password`
+  String get reEnterPassword {
+    return Intl.message(
+      'Re-enter password',
+      name: 'reEnterPassword',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Already have an account? Sign in`
+  String get haveAccountSignIn {
+    return Intl.message(
+      'Already have an account? Sign in',
+      name: 'haveAccountSignIn',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Passwords do not match`
+  String get passwordNotMatch {
+    return Intl.message(
+      'Passwords do not match',
+      name: 'passwordNotMatch',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Full name`
+  String get fullName {
+    return Intl.message('Full name', name: 'fullName', desc: '', args: []);
+  }
+
+  /// `Password is too weak`
+  String get weakPassword {
+    return Intl.message(
+      'Password is too weak',
+      name: 'weakPassword',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Invalid email address`
+  String get invalidEmail {
+    return Intl.message(
+      'Invalid email address',
+      name: 'invalidEmail',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Registration successful!`
+  String get registerSuccess {
+    return Intl.message(
+      'Registration successful!',
+      name: 'registerSuccess',
       desc: '',
       args: [],
     );

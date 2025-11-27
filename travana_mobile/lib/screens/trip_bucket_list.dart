@@ -1,9 +1,17 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:iconsax/iconsax.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:travana_mobile/screens/add_new_trip.dart';
 import 'package:travana_mobile/screens/trip_detail.dart';
+
+/// Web-д зориулсан localStorage
+/// kIsWeb true бол import 'dart:html' ашиглана
+/// Тиймээс web-д ажиллуулахад token авахад ашиглана
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 class TripListPage extends StatefulWidget {
   const TripListPage({super.key});
@@ -13,11 +21,13 @@ class TripListPage extends StatefulWidget {
 }
 
 class _TripListPageState extends State<TripListPage> {
+  final storage = const FlutterSecureStorage();
   List<dynamic> trips = [];
-  bool isLoading = true;
   List<dynamic> filterTrips = [];
+  bool isLoading = true;
   String selected = 'planned';
   final TextEditingController _searchController = TextEditingController();
+  String? userId;
 
   @override
   void initState() {
@@ -25,36 +35,82 @@ class _TripListPageState extends State<TripListPage> {
     fetchTrips();
   }
 
-  Future<void> fetchTrips() async {
-    final url = Uri.parse("http://localhost:8000/api/trips/");
-    try {
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        dynamic data = jsonDecode(response.body);
-
-        if (data is Map<String, dynamic> && data.containsKey('results')) {
-          data = data['results'];
-        }
-
-        if (data is List) {
-          setState(() {
-            trips = data;
-            filterTrips = data;
-            isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      print(e);
+  Future<String?> _getToken() async {
+    if (kIsWeb) {
+      return html.window.localStorage['access_token'];
+    } else {
+      return await storage.read(key: 'access_token');
     }
   }
 
-  // ⭐ DELETE METHOD
-  Future<void> deleteTrip(int id) async {
-    final url = Uri.parse("http://localhost:8000/api/trips/$id/");
+  Future<String?> _getUserIdFromToken() async {
+    final token = await _getToken();
+    if (token == null) return null;
+
     try {
-      final response = await http.delete(url);
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final data = jsonDecode(payload);
+      return data['user_id'].toString();
+    } catch (e) {
+      print('Error decoding token: $e');
+      return null;
+    }
+  }
+
+  Future<void> fetchTrips() async {
+    setState(() => isLoading = true);
+
+    final token = await _getToken();
+    if (token == null) {
+      print("No token found");
+      setState(() => isLoading = false);
+      return;
+    }
+
+    final uid = await _getUserIdFromToken();
+    if (uid == null) {
+      print("User ID not found in token");
+      setState(() => isLoading = false);
+      return;
+    }
+    userId = uid;
+
+    final url = Uri.parse("http://localhost:8000/api/trips/?user_id=$userId");
+
+    try {
+      final response = await http.get(url, headers: {'Authorization': 'Bearer $token'});
+      if (response.statusCode == 200) {
+        dynamic data = jsonDecode(response.body);
+        if (data is Map<String, dynamic> && data.containsKey('results')) {
+          data = data['results'];
+        }
+        if (data is List) {
+          setState(() {
+            trips = data;
+            filterTrips = List.from(data);
+            isLoading = false;
+          });
+        }
+      } else if (response.statusCode == 401) {
+        print("Unauthorized. Token may be invalid.");
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      print(e);
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> deleteTrip(int id) async {
+    final token = await _getToken();
+    if (token == null) return;
+
+    final url = Uri.parse("http://localhost:8000/api/trips/$id/");
+
+    try {
+      final response = await http.delete(url, headers: {'Authorization': 'Bearer $token'});
       if (response.statusCode == 204 || response.statusCode == 200) {
         setState(() {
           trips.removeWhere((t) => t['id'] == id);
@@ -66,36 +122,30 @@ class _TripListPageState extends State<TripListPage> {
     }
   }
 
-  // ⭐ RENAME DIALOG
   void _showRenameDialog(dynamic trip) {
     final controller = TextEditingController(text: trip['title']);
-
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Rename trip"),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(hintText: "New title"),
+      builder: (context) => AlertDialog(
+        title: const Text("Rename trip"),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: "New title"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  trip['title'] = controller.text;
-                });
-                Navigator.pop(context);
-              },
-              child: const Text("Save"),
-            ),
-          ],
-        );
-      },
+          ElevatedButton(
+            onPressed: () {
+              setState(() => trip['title'] = controller.text);
+              Navigator.pop(context);
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
     );
   }
 
@@ -103,14 +153,8 @@ class _TripListPageState extends State<TripListPage> {
     final query = _searchController.text.toLowerCase();
     return filterTrips.where((trip) {
       final statusMatch = trip['status'] == selected;
-      final titleMatch = (trip['title'] ?? '')
-          .toString()
-          .toLowerCase()
-          .contains(query);
-      final placeMatch = (trip['place_name'] ?? '')
-          .toString()
-          .toLowerCase()
-          .contains(query);
+      final titleMatch = (trip['title'] ?? '').toLowerCase().contains(query);
+      final placeMatch = (trip['place_name'] ?? '').toLowerCase().contains(query);
       return statusMatch && (titleMatch || placeMatch);
     }).toList();
   }
@@ -120,10 +164,7 @@ class _TripListPageState extends State<TripListPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          'My Travel Goals',
-          style: TextStyle(color: Colors.black),
-        ),
+        title: const Text('My Travel Goals', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -131,7 +172,6 @@ class _TripListPageState extends State<TripListPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Search bar
             Padding(
               padding: const EdgeInsets.all(12),
               child: SearchBarWidget(
@@ -140,8 +180,6 @@ class _TripListPageState extends State<TripListPage> {
                 onChanged: (_) => setState(() {}),
               ),
             ),
-
-            // Choice Chips
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -150,283 +188,176 @@ class _TripListPageState extends State<TripListPage> {
                 _buildChip('completed', 'Completed'),
               ],
             ),
-
             const SizedBox(height: 16),
-
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : displayedTrips.isEmpty
-                  ? const Center(child: Text("No trips found"))
-                  : GridView.builder(
-                      padding: const EdgeInsets.all(10),
-                      itemCount: displayedTrips.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
+                      ? const Center(child: Text("No trips found"))
+                      : GridView.builder(
+                          padding: const EdgeInsets.all(10),
+                          itemCount: displayedTrips.length,
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
                             childAspectRatio: 0.8,
                             crossAxisSpacing: 8,
                             mainAxisSpacing: 8,
                           ),
-                      itemBuilder: (context, index) {
-                        final item = displayedTrips[index];
-
-                        String formattedDate = "";
-                        if (item['created_at'] != null) {
-                          final date = DateTime.parse(item['created_at']);
-                          formattedDate =
-                              "${date.year}-${date.month}-${date.day}";
-                        }
-
-                        return GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => TripDetail(trip: item),
-                            ),
-                          ),
-                          child: Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            elevation: 4,
-                            child: Column(
-                              children: [
-                                Expanded(
-                                  child: Stack(
-                                    children: [
-                                      // IMAGE
-                                      ClipRRect(
-                                        borderRadius:
-                                            const BorderRadius.vertical(
+                          itemBuilder: (context, index) {
+                            final item = displayedTrips[index];
+                            String formattedDate = "";
+                            if (item['created_at'] != null) {
+                              final date = DateTime.parse(item['created_at']);
+                              formattedDate = "${date.year}-${date.month}-${date.day}";
+                            }
+                            return GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => TripDetail(trip: item)),
+                              ),
+                              child: Card(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                elevation: 4,
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: Stack(
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: const BorderRadius.vertical(
                                               top: Radius.circular(15),
                                               bottom: Radius.circular(15),
                                             ),
-                                        child: Container(
-                                          width: double.infinity,
-                                          height: double.infinity,
-                                          color: const Color.fromARGB(
-                                            255,
-                                            251,
-                                            251,
-                                            251,
-                                          ),
-                                          child: item['image'] != null
-                                              ? Image.network(
-                                                  item['image']
-                                                      .toString()
-                                                      .replaceFirst(
-                                                        '127.0.0.1',
-                                                        'localhost',
-                                                      ),
-                                                  fit: BoxFit.cover,
-                                                )
-                                              : const Center(
-                                                  child: Icon(
-                                                    Icons.image_not_supported,
-                                                    size: 50,
-                                                    color: Colors.grey,
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
-
-                                      // STATUS LABEL
-                                      Positioned(
-                                        top: 10,
-                                        left: 10,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: item['status'] == 'planned'
-                                                ? Colors.lightBlue
-                                                : Colors.green,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            item['status'] == 'planned'
-                                                ? 'Planned'
-                                                : 'Completed',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-
-                                      // ⭐ MENU BUTTON (PopupMenu)
-                                      Positioned(
-                                        top: 5,
-                                        right: 1,
-                                        child: PopupMenuButton<String>(
-                                          onSelected: (value) {
-                                            if (value == 'edit') {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      TripDetail(trip: item),
-                                                ),
-                                              );
-                                            } else if (value == 'rename') {
-                                              _showRenameDialog(item);
-                                            } else if (value == 'delete') {
-                                              showDialog(
-                                                context: context,
-                                                builder: (_) => AlertDialog(
-                                                  title: const Text(
-                                                    'Delete trip?',
-                                                  ),
-                                                  content: const Text(
-                                                    "Are you sure you want to delete this trip?",
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                            context,
-                                                          ),
-                                                      child: const Text(
-                                                        "Cancel",
-                                                      ),
+                                            child: Container(
+                                              width: double.infinity,
+                                              height: double.infinity,
+                                              color: const Color.fromARGB(255, 251, 251, 251),
+                                              child: item['image'] != null
+                                                  ? Image.network(
+                                                      item['image'].toString().replaceFirst('127.0.0.1', 'localhost'),
+                                                      fit: BoxFit.cover,
+                                                    )
+                                                  : const Center(
+                                                      child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
                                                     ),
-                                                    TextButton(
-                                                      onPressed: () async {
-                                                        Navigator.pop(context);
-                                                        await deleteTrip(
-                                                          item['id'],
-                                                        );
-                                                      },
-                                                      child: const Text(
-                                                        'Delete', style: TextStyle(color: Colors.red),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-                                            }
-                                          },
-                                          color: Colors.white,
-                                          elevation: 6,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
                                             ),
                                           ),
-                                          child: const Icon(
-                                            Icons.more_vert,
-                                            color: Color.fromARGB(
-                                              255,
-                                              200,
-                                              200,
-                                              200,
-                                            ),
-                                            size: 22,
-                                          ),
-                                          itemBuilder: (context) => [
-                                            const PopupMenuItem(
-                                              value: 'edit',
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.edit, size: 18),
-                                                  SizedBox(width: 10),
-                                                  Text("Edit trip"),
-                                                ],
+                                          Positioned(
+                                            top: 10,
+                                            left: 10,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: item['status'] == 'planned' ? Colors.lightBlue : Colors.green,
+                                                borderRadius: BorderRadius.circular(12),
                                               ),
-                                            ),
-                                            const PopupMenuItem(
-                                              value: 'rename',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons
-                                                        .drive_file_rename_outline,
-                                                    size: 18,
-                                                  ),
-                                                  SizedBox(width: 10),
-                                                  Text("Rename"),
-                                                ],
-                                              ),
-                                            ),
-                                            const PopupMenuItem(
-                                              value: 'delete',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.delete,
-                                                    color: Colors.red,
-                                                    size: 18,
-                                                  ),
-                                                  SizedBox(width: 10),
-                                                  Text(
-                                                    "Delete",
-                                                    style: TextStyle(
-                                                      color: Colors.red,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-
-                                      // TITLE + DATE
-                                      Positioned(
-                                        bottom: 10,
-                                        left: 10,
-                                        right: 10,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(
-                                              0.55,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                item['title'] ?? '',
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                formattedDate,
+                                              child: Text(
+                                                item['status'] == 'planned' ? 'Planned' : 'Completed',
                                                 style: const TextStyle(
                                                   color: Colors.white,
                                                   fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
                                                 ),
                                               ),
-                                            ],
+                                            ),
                                           ),
-                                        ),
+                                          Positioned(
+                                            top: 10,
+                                            right: 1,
+                                            child: PopupMenuButton<String>(
+                                              onSelected: (value) async {
+                                                if (value == 'edit') {
+                                                  final updatedTrip = await showModalBottomSheet(
+                                                    context: context,
+                                                    isScrollControlled: true,
+                                                    backgroundColor: Colors.white,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                                                    ),
+                                                    builder: (_) => AddNewTripModal(trip: item),
+                                                  );
+                                                  if (updatedTrip != null) {
+                                                    setState(() {
+                                                      final index = trips.indexWhere((t) => t['id'] == updatedTrip['id']);
+                                                      trips[index] = updatedTrip;
+                                                      filterTrips[index] = updatedTrip;
+                                                    });
+                                                  }
+                                                } else if (value == 'rename') {
+                                                  _showRenameDialog(item);
+                                                } else if (value == 'delete') {
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (_) => AlertDialog(
+                                                      title: const Text('Delete trip?'),
+                                                      content: const Text("Are you sure you want to delete this trip?"),
+                                                      actions: [
+                                                        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+                                                        TextButton(
+                                                          onPressed: () async {
+                                                            Navigator.pop(context);
+                                                            await deleteTrip(item['id']);
+                                                          },
+                                                          child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                              color: Colors.white,
+                                              elevation: 6,
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                              child: const Icon(Icons.more_vert, color: Color.fromARGB(255, 200, 200, 200), size: 22),
+                                              itemBuilder: (context) => [
+                                                const PopupMenuItem(
+                                                  value: 'edit',
+                                                  child: Row(children: [Icon(Icons.edit, size: 18), SizedBox(width: 10), Text("Edit trip")]),
+                                                ),
+                                                const PopupMenuItem(
+                                                  value: 'rename',
+                                                  child: Row(children: [Icon(Icons.drive_file_rename_outline, size: 18), SizedBox(width: 10), Text("Rename")]),
+                                                ),
+                                                const PopupMenuItem(
+                                                  value: 'delete',
+                                                  child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 18), SizedBox(width: 10), Text("Delete", style: TextStyle(color: Colors.red))]),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Positioned(
+                                            bottom: 10,
+                                            left: 10,
+                                            right: 10,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black.withOpacity(0.55),
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    item['title'] ?? '',
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(formattedDate, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                              ),
+                            );
+                          },
+                        ),
             ),
           ],
         ),
@@ -437,17 +368,16 @@ class _TripListPageState extends State<TripListPage> {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            builder: (_) => const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: AddNewTripModal(),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+            builder: (_) => const Padding(padding: EdgeInsets.all(16), child: AddNewTripModal()),
           );
-
           if (newTrip != null) {
-            setState(() => trips.add(newTrip));
+            setState(() {
+              trips.add(newTrip);
+              if (newTrip['status'] == selected || selected == 'all') {
+                filterTrips.add(newTrip);
+              }
+            });
           }
         },
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
@@ -459,19 +389,11 @@ class _TripListPageState extends State<TripListPage> {
 
   Widget _buildChip(String value, String label) {
     return ChoiceChip(
-      label: Text(
-        label,
-        style: TextStyle(
-          color: selected == value ? Colors.white : Colors.black,
-        ),
-      ),
+      label: Text(label, style: TextStyle(color: selected == value ? Colors.white : Colors.black)),
       selected: selected == value,
       checkmarkColor: Colors.white,
       selectedColor: const Color.fromARGB(255, 238, 128, 139),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: Color.fromARGB(255, 238, 128, 139)),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color.fromARGB(255, 238, 128, 139))),
       onSelected: (_) => setState(() => selected = value),
     );
   }
@@ -481,13 +403,7 @@ class SearchBarWidget extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
   final ValueChanged<String>? onChanged;
-
-  const SearchBarWidget({
-    super.key,
-    required this.controller,
-    required this.hintText,
-    this.onChanged,
-  });
+  const SearchBarWidget({super.key, required this.controller, required this.hintText, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -500,10 +416,7 @@ class SearchBarWidget extends StatelessWidget {
         filled: true,
         fillColor: Colors.grey.shade200,
         contentPadding: const EdgeInsets.all(12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       ),
     );
   }

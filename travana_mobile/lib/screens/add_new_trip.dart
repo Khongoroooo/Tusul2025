@@ -6,12 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:travana_mobile/screens/place.dart';
-import 'package:travana_mobile/screens/trip_bucket_list.dart';
-import 'dart:html' as html;
 import 'package:http/http.dart' as http;
+import 'dart:html' as html;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AddNewTripModal extends StatefulWidget {
-  const AddNewTripModal({super.key});
+  final dynamic trip;
+  const AddNewTripModal({super.key, this.trip});
 
   @override
   State<AddNewTripModal> createState() => _AddNewTripModalState();
@@ -23,18 +24,61 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
   final TextEditingController _budgetController = TextEditingController();
   final TextEditingController _placeController = TextEditingController();
 
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
   String _selectedCountry = '₮';
-  File? _selectedImageFile; // Mobile
-  Uint8List? _selectedImageMemory; // Web
+  File? _selectedImageFile;
+  Uint8List? _selectedImageMemory;
+  String? _imageUrl;
 
   DateTime? startDate;
   DateTime? endDate;
   int? _selectedPlaceId;
 
-  // ------------------------------
-  //     SAVE TRIP → BACKEND
-  // ------------------------------
+  @override
+  void initState() {
+    super.initState();
+    if (widget.trip != null) {
+      final trip = widget.trip;
+
+      _titleController.text = trip['title'] ?? '';
+      _noteController.text = trip['notes'] ?? '';
+      _budgetController.text = trip['budget']?.toString() ?? '';
+      _selectedCountry = trip['currency'] ?? '₮';
+
+      if (trip['place_name'] != null) {
+        _placeController.text = trip['place_name'];
+      } else if (trip['place'] != null && trip['place'] is Map) {
+        _placeController.text = trip['place']['name'] ?? '';
+        _selectedPlaceId = trip['place']['id'];
+      } else if (trip['place'] != null && trip['place'] is int) {
+        _selectedPlaceId = trip['place'];
+      }
+
+      if (trip['start_date'] != null)
+        startDate = DateTime.parse(trip['start_date']);
+      if (trip['end_date'] != null) endDate = DateTime.parse(trip['end_date']);
+      if (trip['image'] != null) _imageUrl = trip['image'];
+    }
+  }
+
+  Future<String?> _getToken() async {
+    if (kIsWeb) {
+      return html.window.localStorage['access_token'];
+    } else {
+      return await _storage.read(key: 'access_token');
+    }
+  }
+
   Future<void> _saveTrip() async {
+    final token = await _getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No token found! Please login.')),
+      );
+      return;
+    }
+
     if (_titleController.text.isEmpty ||
         _placeController.text.isEmpty ||
         startDate == null ||
@@ -45,9 +89,14 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
       return;
     }
 
-    final url = Uri.parse("http://127.0.0.1:8000/api/trips/");
+    final isEdit = widget.trip != null;
+    final url = isEdit
+        ? Uri.parse("http://127.0.0.1:8000/api/trips/${widget.trip['id']}/")
+        : Uri.parse("http://127.0.0.1:8000/api/trips/");
 
-    var request = http.MultipartRequest("POST", url);
+    var request = isEdit
+        ? http.MultipartRequest("PUT", url)
+        : http.MultipartRequest("POST", url);
 
     request.fields['title'] = _titleController.text;
     request.fields['notes'] = _noteController.text;
@@ -57,14 +106,12 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
     request.fields['start_date'] = DateFormat('yyyy-MM-dd').format(startDate!);
     request.fields['end_date'] = DateFormat('yyyy-MM-dd').format(endDate!);
 
-    // ---- MOBILE IMAGE ----
     if (_selectedImageFile != null) {
       request.files.add(
         await http.MultipartFile.fromPath('image', _selectedImageFile!.path),
       );
     }
 
-    // ---- WEB IMAGE ----
     if (_selectedImageMemory != null) {
       request.files.add(
         http.MultipartFile.fromBytes(
@@ -75,12 +122,13 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
       );
     }
 
+    request.headers['Authorization'] = 'Bearer $token';
+
     var response = await request.send();
     var respStr = await response.stream.bytesToString();
 
     if (response.statusCode == 201 || response.statusCode == 200) {
       Navigator.pop(context, jsonDecode(respStr));
-
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Trip saved successfully!")));
@@ -91,23 +139,19 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
     }
   }
 
-  // ------------------------------
-  //       PICK IMAGE (WEB/MOBILE)
-  // ------------------------------
   Future<void> _pickImage() async {
     if (kIsWeb) {
       final html.InputElement input = html.InputElement(type: "file");
       input.accept = "image/*";
       input.click();
-
       input.onChange.listen((event) {
         final file = input.files!.first;
         final reader = html.FileReader();
-
         reader.readAsArrayBuffer(file);
         reader.onLoadEnd.listen((event) {
           setState(() {
             _selectedImageMemory = reader.result as Uint8List;
+            _imageUrl = null;
           });
         });
       });
@@ -115,9 +159,9 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
       final picker = ImagePicker();
       final picked = await picker.pickImage(source: ImageSource.gallery);
       if (picked == null) return;
-
       setState(() {
         _selectedImageFile = File(picked.path);
+        _imageUrl = null;
       });
     }
   }
@@ -140,13 +184,11 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
               ),
             ),
           ),
-
-          const Text(
-            'Add trip',
-            style: TextStyle(color: Colors.black, fontSize: 20),
+          Text(
+            widget.trip == null ? 'Add trip' : 'Edit trip',
+            style: const TextStyle(color: Colors.black, fontSize: 20),
           ),
           const SizedBox(height: 10),
-
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -181,23 +223,26 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
                                 width: double.infinity,
                               ),
                             )
+                          : _imageUrl != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.network(
+                                _imageUrl!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                              ),
+                            )
                           : const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.image_outlined,
-                                    size: 30,
-                                    color: Colors.black,
-                                  ),
-                                  SizedBox(height: 8),
-                                ],
+                              child: Icon(
+                                Icons.image_outlined,
+                                size: 30,
+                                color: Colors.black,
                               ),
                             ),
                     ),
                   ),
-
                   const SizedBox(height: 15),
+                  // Title
                   TextField(
                     controller: _titleController,
                     decoration: InputDecoration(
@@ -217,13 +262,15 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Color.fromARGB(255, 238, 128, 139)),
+                        borderSide: const BorderSide(
+                          color: Color.fromARGB(255, 238, 128, 139),
+                        ),
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 15),
+                  // Notes
                   TextField(
                     maxLines: null,
                     minLines: 3,
@@ -245,13 +292,15 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Color.fromARGB(255, 238, 128, 139)),
+                        borderSide: const BorderSide(
+                          color: Color.fromARGB(255, 238, 128, 139),
+                        ),
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 15),
+                  // Date pickers
                   Row(
                     children: [
                       SizedBox(
@@ -260,13 +309,12 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
                           onPressed: () async {
                             DateTime? picked = await showDatePicker(
                               context: context,
-                              initialDate: DateTime.now(),
+                              initialDate: startDate ?? DateTime.now(),
                               firstDate: DateTime(2023),
                               lastDate: DateTime(2100),
                             );
-                            if (picked != null) {
+                            if (picked != null)
                               setState(() => startDate = picked);
-                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color.fromARGB(
@@ -296,7 +344,6 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 15),
                       SizedBox(
                         width: 170,
@@ -304,13 +351,12 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
                           onPressed: () async {
                             DateTime? picked = await showDatePicker(
                               context: context,
-                              initialDate: DateTime.now(),
+                              initialDate: endDate ?? DateTime.now(),
                               firstDate: DateTime(2023),
                               lastDate: DateTime(2100),
                             );
-                            if (picked != null) {
+                            if (picked != null)
                               setState(() => endDate = picked);
-                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color.fromARGB(
@@ -342,8 +388,8 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 15),
+                  // Budget + Currency
                   Row(
                     children: [
                       Expanded(
@@ -395,9 +441,7 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
                             ),
                           ],
                           onChanged: (value) {
-                            setState(() {
-                              _selectedCountry = value!;
-                            });
+                            setState(() => _selectedCountry = value!);
                           },
                           decoration: InputDecoration(
                             focusedBorder: OutlineInputBorder(
@@ -417,8 +461,8 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 15),
+                  // Place picker
                   ElevatedButton(
                     onPressed: () async {
                       final selectedPlace = await Navigator.push(
@@ -427,8 +471,10 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
                       );
                       if (selectedPlace != null) {
                         setState(() {
-                          _placeController.text = selectedPlace['name'];
-                          _selectedPlaceId = selectedPlace['id'];
+                          _placeController.text =
+                              selectedPlace['name'] ?? _placeController.text;
+                          _selectedPlaceId =
+                              selectedPlace['id'] ?? _selectedPlaceId;
                         });
                       }
                     },
@@ -476,17 +522,14 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
               ),
             ),
           ),
-
-          // Bottom
+          // Save/Close buttons
           Padding(
             padding: const EdgeInsets.only(top: 10, bottom: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                  onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
@@ -509,7 +552,7 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
                 ElevatedButton.icon(
                   onPressed: _saveTrip,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color.fromARGB(255, 238, 128, 139),
+                    backgroundColor: const Color.fromARGB(255, 238, 128, 139),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 30,
                       vertical: 15,

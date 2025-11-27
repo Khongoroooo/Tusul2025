@@ -45,6 +45,31 @@ INSTALLED_APPS = [
     "travel_app",
     'django_filters',
 ]
+DJOSER = {
+    'LOGIN_FIELD': 'email',
+    # 'SEND_ACTIVATION_EMAIL': True,
+    # 'ACTIVATION_URL': 'verify/{uid}/{token}/',
+    'SERIALIZERS': {
+        'user_create': 'travel_app.serializers.UserCreateSerializer',
+        'user': 'travel_app.serializers.UserSerializer',
+    }
+}
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' 
+# -----------------------
+# EMAIL CONFIG
+# -----------------------
+
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'hongoroo1289810@gmail.com'
+# EMAIL_HOST_PASSWORD = 'diql vmon ghew duss'
+# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',

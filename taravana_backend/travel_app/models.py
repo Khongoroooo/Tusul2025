@@ -3,23 +3,45 @@ from django.contrib.auth.models import User, AbstractUser
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from django.contrib.auth.models import BaseUserManager, AbstractUser
+from django.db import models
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("Email is required")
+
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save()
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+
+        return self.create_user(email, password, **extra_fields)
+
+
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
         ('user', 'User'),
         ('admin', 'Admin'),
+    )
 
-    )
-    role = models.CharField(
-        max_length=20,
-        choices=ROLE_CHOICES,
-        default='user',
-        null=False,
-        blank=False
-    )
-    class Meta(AbstractUser.Meta):
-        swappable = 'AUTH_USER_MODEL'
+    username = None  # username-г хассан
+    email = models.EmailField(unique=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+
+    objects = CustomUserManager()  # 💥 ШИНЭ MANAGER АШИГЛАНА
+
     def __str__(self):
-        return self.username
+        return self.email
+
 
 
 # --------------------------
@@ -41,6 +63,11 @@ class Country(models.Model):
 class Profile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     bio = models.TextField()
+    phone = models.IntegerField(blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True, null=True)
+    last_name = models.CharField(max_length=100, blank=True, null=True)
+    First_name = models.CharField(max_length=100, blank=True, null=True)
+
 
 # --------------------------
 # Badge
@@ -128,5 +155,15 @@ class Trip(models.Model):
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-class Goals(models.Model):
-    pass
+# --------------------------
+# Comment
+# --------------------------
+class Comment(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='comments')
+    blog = models.ForeignKey(Blog, on_delete=models.CASCADE, related_name='comments')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'Comment by {self.user.email} on {self.blog.title}'

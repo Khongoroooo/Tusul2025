@@ -9,23 +9,34 @@ User = get_user_model()
 
 # 1. Бүртгэлийн Serializer (Register)
 class UserCreateSerializer(UserCreateSerializer):
+    re_password = serializers.CharField(write_only=True)
+
     class Meta(UserCreateSerializer.Meta):
         model = User
-        fields = ('id', 'username', 'email', 'password','role')
+        fields = ('id', 'email', 'password', 're_password')
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['re_password']:
+            raise serializers.ValidationError("Password do not match!")
+        return attrs
 
     def create(self, validated_data):
-        user = super().create(validated_data)
-        if validated_data.get('role') == 'admin':
-            user.is_staff = True
-            user.is_superuser = True
-            user.save()
+        validated_data.pop('re_password')  # устгана
+        user = User.objects.create_user(
+            email=validated_data['email'],
+            password=validated_data['password'],
+            role='user',
+            is_active=True  
+        )
         return user
 
+
+    
 # 2. User-ийн мэдээллийг харуулах Serializer
 class UserSerializer(UserSerializer):
     class Meta(UserSerializer.Meta):
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name','role')
+        fields = ('id', 'email', 'first_name', 'last_name','role')
 
 class CountrySerializer(serializers.ModelSerializer):
     class Meta:

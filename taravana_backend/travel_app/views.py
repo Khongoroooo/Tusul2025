@@ -1,52 +1,39 @@
-from django.shortcuts import render
-from rest_framework import viewsets, generics, filters
-from .models import Country, Place,Trip
-from .serializer import CountrySerializer,PlaceSerializer,TripSerializer
+from django.db.models import Q
+from rest_framework import viewsets, filters
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from .models import Country, Place, Trip
+from .serializers import CountrySerializer, PlaceSerializer, TripSerializer
 from .permissions import IsOwnerOrAdmin
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.permissions import AllowAny
 
-# class TripViewSet(viewsets.ModelViewSet):
-#     # 1. Queryset: API-д харуулах бүх өгөгдөл.
-#     queryset = Trip.objects.all().order_by('-created_at') 
-    
-#     # 2. Serializer:
-#     serializer_class = TripSerializer
-    
-#     # 3. Permission:
-#     permission_classes = [IsAuthenticated, IsOwnerOrAdmin] 
-    
-#     # 4. Create (POST) хийх үед хэрэглэгчийг автоматаар оноох функц
-#     def perform_create(self, serializer):
-#         # request.user нь Token-оос ирсэн CustomUser объект байна
-#         serializer.save(user=self.request.user)
-# Create your views here.
+# Country
 class CountryViewSet(viewsets.ModelViewSet):
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
     permission_classes = [AllowAny]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'description']
+
+# Place
 class PlaceViewSet(viewsets.ModelViewSet):
     queryset = Place.objects.all()
     serializer_class = PlaceSerializer
-    filter_backends = [filters.SearchFilter]
     permission_classes = [AllowAny]
+    filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'country', 'description', 'tags']
-from django.db.models import Q
 
+# Trip
 class TripViewSet(viewsets.ModelViewSet):
-    queryset = Trip.objects.all().order_by('-created_at')  # 👈 Шинэ нь эхэнд
     serializer_class = TripSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     filter_backends = [filters.SearchFilter]
-    search_fields = ['title','place__name','notes','budget','start_date','end_date']
+    search_fields = ['title', 'place__name', 'notes', 'budget', 'start_date', 'end_date']
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        search = self.request.query_params.get('search', '')
-        status = self.request.query_params.get('status', None)
+        # Зөвхөн тухайн хэрэглэгчийн trip-үүдийг авна
+        queryset = Trip.objects.filter(user=self.request.user).order_by('-created_at')
 
+        # Search query
+        search = self.request.query_params.get('search', '')
         if search:
             queryset = queryset.filter(
                 Q(title__icontains=search) |
@@ -54,7 +41,13 @@ class TripViewSet(viewsets.ModelViewSet):
                 Q(notes__icontains=search)
             )
 
+        # Status filter
+        status = self.request.query_params.get('status', None)
         if status:
             queryset = queryset.filter(status=status)
 
-        return queryset.order_by('-created_at')  # 👈 Шинэ нь эхэнд
+        return queryset
+
+    def perform_create(self, serializer):
+        # Trip үүсгэх үед user-г автоматаар онооно
+        serializer.save(user=self.request.user)

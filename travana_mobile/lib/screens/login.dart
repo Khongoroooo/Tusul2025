@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:http/http.dart' as http;
 import 'package:travana_mobile/screens/home_page.dart';
+import 'package:travana_mobile/screens/register.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:html' as html;
 import '../generated/l10n.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -22,12 +28,53 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   bool _obscurePassword = true;
 
-  void handleLogin() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
-    );
-    // Login логик энд
+  final _storage = const FlutterSecureStorage(); // Mobile token хадгалах
+
+  Future<void> handleLogin() async {
+    final url = Uri.parse('http://127.0.0.1:8000/auth/jwt/create/'); // Django JWT endpoint
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': emailController.text,
+          'password': passwordController.text,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final token = data['access']; // JWT access token
+
+        // Token-г Web болон Mobile-д хадгалах
+        if (kIsWeb) {
+          html.window.localStorage['access_token'] = token;
+        } else {
+          await _storage.write(key: 'access_token', value: token);
+        }
+
+        // HomePage руу шилжих
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      } else {
+        final data = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -36,9 +83,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        backgroundColor: Colors.white,
         title: const Text(''),
         actions: [
           Padding(
@@ -47,13 +94,10 @@ class _LoginScreenState extends State<LoginScreen> {
               onTap: widget.toggleLanguage,
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  color: Colors.pinkAccent,
+                  color: const Color.fromARGB(255, 238, 128, 139),
                 ),
                 child: Row(
                   children: [
@@ -85,7 +129,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: screenHeight * 0.03),
 
-            // Email input
             TextField(
               controller: emailController,
               decoration: InputDecoration(
@@ -97,10 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(
-                    color: Color(0xFFF8AEB6),
-                    width: 1,
-                  ),
+                  borderSide: const BorderSide(color: Color(0xFFF8AEB6), width: 1),
                 ),
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(12.0),
@@ -111,7 +151,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: screenHeight * 0.02),
 
-            // Password input
             TextField(
               controller: passwordController,
               obscureText: _obscurePassword,
@@ -124,10 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(
-                    color: Colors.pinkAccent,
-                    width: 1,
-                  ),
+                  borderSide: const BorderSide(color: Color(0xFFEE808B), width: 1),
                 ),
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(12.0),
@@ -139,16 +175,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Colors.grey[600],
                   ),
                   onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
+                    setState(() => _obscurePassword = !_obscurePassword);
                   },
                 ),
               ),
             ),
             SizedBox(height: screenHeight * 0.01),
 
-            // Forgot password
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
@@ -170,43 +203,47 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Text(S.of(context).forgotPassword),
               ),
             ),
-
             SizedBox(height: screenHeight * 0.1),
 
-            // Sign in button
             ElevatedButton(
               onPressed: handleLogin,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
-                backgroundColor: Color.fromARGB(255, 252, 169, 178),
+                backgroundColor: const Color.fromARGB(255, 238, 128, 139),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
                 ),
               ),
               child: Text(
                 S.of(context).signIn,
-                style: TextStyle(fontSize: 18, color: Colors.white),
+                style: const TextStyle(fontSize: 18, color: Colors.white),
               ),
             ),
             SizedBox(height: screenHeight * 0.02),
 
-            // Sign up button
             ElevatedButton(
-              onPressed: handleLogin,
+              onPressed: () => {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RegisterScreen(
+                      toggleLanguage: widget.toggleLanguage,
+                      locale: widget.locale,
+                    ),
+                  ),
+                ),
+              },
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
                 backgroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
-                  side: const BorderSide(
-                    color: Color.fromARGB(255, 215, 183, 196),
-                    width: 1,
-                  ),
+                  side: const BorderSide(color: Color(0xFFEE808B), width: 1),
                 ),
               ),
               child: Text(
                 S.of(context).signUp,
-                style: TextStyle(fontSize: 18, color: Colors.black),
+                style: const TextStyle(fontSize: 18, color: Colors.black),
               ),
             ),
           ],

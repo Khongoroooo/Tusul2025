@@ -28,7 +28,7 @@ from django.conf import settings
 router = routers.DefaultRouter()
 router.register(r'countries',CountryViewSet)
 router.register(r'places',PlaceViewSet)
-router.register(r'trips',TripViewSet)
+router.register(r'trips',TripViewSet, basename='trip')
 
 
 
@@ -41,8 +41,12 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/', include(router.urls)),
+    
   
 ]
+
+  
+
 
 if settings.DEBUG:
     urlpatterns +=static(settings.MEDIA_URL, document_root = settings.MEDIA_ROOT)

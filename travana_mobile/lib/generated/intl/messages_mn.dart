@@ -31,13 +31,30 @@ class MessageLookup extends MessageLookupByLibrary {
       "Нууц үгээ мартсан?",
     ),
     "forgotPasswordDialogContent": MessageLookupByLibrary.simpleMessage(
-      "Нууц үг сэргээх үйлдэл энд явна.",
+      "Нууц үг сэргээх үйлдэл энд хийгдэнэ.",
     ),
     "forgotPasswordDialogTitle": MessageLookupByLibrary.simpleMessage(
       "Нууц үг мартсан",
     ),
+    "fullName": MessageLookupByLibrary.simpleMessage("Нэр"),
+    "haveAccountSignIn": MessageLookupByLibrary.simpleMessage(
+      "Бүртгэлтэй юу? Нэвтрэх",
+    ),
+    "invalidEmail": MessageLookupByLibrary.simpleMessage(
+      "И-мэйл хаяг буруу байна",
+    ),
     "password": MessageLookupByLibrary.simpleMessage("Нууц үг"),
+    "passwordNotMatch": MessageLookupByLibrary.simpleMessage(
+      "Нууц үг хоорондоо таарахгүй байна",
+    ),
+    "reEnterPassword": MessageLookupByLibrary.simpleMessage(
+      "Нууц үгийг давтан оруулах",
+    ),
+    "registerSuccess": MessageLookupByLibrary.simpleMessage(
+      "Бүртгэл амжилттай!",
+    ),
     "signIn": MessageLookupByLibrary.simpleMessage("Нэвтрэх"),
     "signUp": MessageLookupByLibrary.simpleMessage("Бүртгүүлэх"),
+    "weakPassword": MessageLookupByLibrary.simpleMessage("Нууц үг сул байна"),
   };
 }

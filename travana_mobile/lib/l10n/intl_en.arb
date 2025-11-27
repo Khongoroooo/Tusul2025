@@ -1,12 +1,21 @@
 {
-  "@@locale": "mn",
+  "@@locale": "en",
+
   "email": "E-mail",
   "password": "Password",
   "forgotPassword": "Forgot password?",
   "forgotPasswordDialogTitle": "Forgot password",
-  "forgotPasswordDialogContent": "Forgot password functionality goes here.",
+  "forgotPasswordDialogContent": "Password recovery functionality goes here.",
   "close": "Close",
   "signIn": "Sign in",
   "signUp": "Sign up",
-  "fillAllFields": "Please fill all fields!"
+  "fillAllFields": "Please fill all fields!",
+
+  "reEnterPassword": "Re-enter password",
+  "haveAccountSignIn": "Already have an account? Sign in",
+  "passwordNotMatch": "Passwords do not match",
+  "fullName": "Full name",
+  "weakPassword": "Password is too weak",
+  "invalidEmail": "Invalid email address",
+  "registerSuccess": "Registration successful!"
 }

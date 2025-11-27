@@ -1,12 +1,21 @@
 {
   "@@locale": "mn",
+
   "email": "И-мэйл",
   "password": "Нууц үг",
   "forgotPassword": "Нууц үгээ мартсан?",
   "forgotPasswordDialogTitle": "Нууц үг мартсан",
-  "forgotPasswordDialogContent": "Нууц үг сэргээх үйлдэл энд явна.",
+  "forgotPasswordDialogContent": "Нууц үг сэргээх үйлдэл энд хийгдэнэ.",
   "close": "Хаах",
   "signIn": "Нэвтрэх",
   "signUp": "Бүртгүүлэх",
-  "fillAllFields": "Бүх талбарыг бөглөнө үү!"
+  "fillAllFields": "Бүх талбарыг бөглөнө үү!",
+
+  "reEnterPassword": "Нууц үгийг давтан оруулах",
+  "haveAccountSignIn": "Бүртгэлтэй юу? Нэвтрэх",
+  "passwordNotMatch": "Нууц үг хоорондоо таарахгүй байна",
+  "fullName": "Нэр",
+  "weakPassword": "Нууц үг сул байна",
+  "invalidEmail": "И-мэйл хаяг буруу байна",
+  "registerSuccess": "Бүртгэл амжилттай!"
 }
