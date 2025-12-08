@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:travana_mobile/screens/blogs.dart';
 import 'package:travana_mobile/screens/home.dart';
 import 'package:travana_mobile/screens/profile.dart';
 import 'package:travana_mobile/screens/trip_bucket_list.dart';
@@ -20,7 +21,7 @@ class _HomePageState extends State<HomePage> {
     TripListPage(),
     Center(child: Text('Flights Page', style: TextStyle(fontSize: 20))),
 
-    Center(child: Text('Flights Page', style: TextStyle(fontSize: 20))),
+    BlogsPage(),
     ProfilePage(),
   ];
 

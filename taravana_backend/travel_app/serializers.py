@@ -1,17 +1,15 @@
 from rest_framework import serializers
-from .models import Country, Place, Trip
+from .models import *
 from django.contrib.auth import get_user_model
-from djoser.serializers import UserCreateSerializer 
-from djoser.serializers import UserSerializer 
+from djoser.serializers import UserCreateSerializer as DjoserUserCreateSerializer
+from djoser.serializers import UserSerializer as DjoserUserSerializer
 User = get_user_model()
 
-
-
 # 1. Бүртгэлийн Serializer (Register)
-class UserCreateSerializer(UserCreateSerializer):
+class UserCreateSerializer(DjoserUserCreateSerializer):
     re_password = serializers.CharField(write_only=True)
 
-    class Meta(UserCreateSerializer.Meta):
+    class Meta(DjoserUserCreateSerializer.Meta):
         model = User
         fields = ('id', 'email', 'password', 're_password')
 
@@ -30,26 +28,42 @@ class UserCreateSerializer(UserCreateSerializer):
         )
         return user
 
+class ProfileSerialezer(serializers.ModelSerializer):
+    profile_img = serializers.ImageField(use_url=True)
+    class Meta:
+        model = Profile
+        fields = ('bio', 'profile_img', 'phone', 'address','username')
+    def get_profile_img(self, obj):
+        request = self.context.get('request')
+        if obj.profile_img and hasattr(obj.profile_img, 'url'):
+            return request.build_absolute_uri(obj.profile_img.url)
+        return None
 
-    
 # 2. User-ийн мэдээллийг харуулах Serializer
-class UserSerializer(UserSerializer):
-    class Meta(UserSerializer.Meta):
+class UserSerializer(DjoserUserSerializer):
+    profile = ProfileSerialezer(read_only=True)
+    class Meta(DjoserUserSerializer.Meta):
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name','role')
+        fields = ('id', 'email', 'first_name', 'last_name','role', 'profile')
 
 class CountrySerializer(serializers.ModelSerializer):
     class Meta:
         model = Country
         fields = '__all__'
+
 class PlaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Place
         fields = '__all__'
+
 class TripSerializer(serializers.ModelSerializer):
     # place_name = serializers.CharField(source = 'place_name', read_only = True)
     class Meta:
         model = Trip
         fields = '__all__'
-       
+
+class BlogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Blog 
+        fields = '__all__'    
         

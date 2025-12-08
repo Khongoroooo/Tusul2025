@@ -2,9 +2,12 @@ from django.db import models
 from django.contrib.auth.models import User, AbstractUser
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-
+from django.dispatch import receiver
+from django.db.models.signals import post_save
 from django.contrib.auth.models import BaseUserManager, AbstractUser
 from django.db import models
+
+
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -42,7 +45,10 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.email
 
-
+@receiver(post_save, sender=CustomUser)
+def create_user_profile(sender, istance, created, **kwargs):
+    if created:
+        Profile.objects.all(user=istance)
 
 # --------------------------
 # Country
@@ -62,7 +68,9 @@ class Country(models.Model):
 
 class Profile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    username = models.CharField(max_length=100, blank=True, null=True, unique=True)
     bio = models.TextField()
+    profile_img = models.ImageField(upload_to='profile/', blank=True, null=True)
     phone = models.IntegerField(blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     last_name = models.CharField(max_length=100, blank=True, null=True)
@@ -102,7 +110,7 @@ class Place(models.Model):
 # --------------------------
 class Blog(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='blogs')
-    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='blogs')
+    place = models.ForeignKey(Place, on_delete=models.CASCADE, related_name='blogs')
     title = models.CharField(max_length=255)
     content = models.TextField()
     image = models.ImageField(upload_to='blog/', blank=True, null=True)

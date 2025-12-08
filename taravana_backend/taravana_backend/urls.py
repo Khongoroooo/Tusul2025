@@ -17,7 +17,7 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
-from travel_app.views import CountryViewSet,PlaceViewSet, TripViewSet
+from travel_app.views import *
 from django.conf.urls.static import static
 from rest_framework import routers
 
@@ -29,6 +29,7 @@ router = routers.DefaultRouter()
 router.register(r'countries',CountryViewSet)
 router.register(r'places',PlaceViewSet)
 router.register(r'trips',TripViewSet, basename='trip')
+router.register(r'blogs',BlogViewSet)
 
 
 
@@ -41,6 +42,9 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/', include(router.urls)),
+    path('api/me/', get_me, name='me'),
+    path('api/profile/update/', update_profile, name='update_profile'),
+
     
   
 ]

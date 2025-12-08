@@ -14,11 +14,7 @@ class CustomBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        left: 20,
-        right: 20,
-        bottom: 20, // доороосоо зай
-      ),
+      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
         decoration: BoxDecoration(
@@ -35,12 +31,12 @@ class CustomBottomNav extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: List.generate(5, (index) {
-            final icons = [
-              Iconsax.home,
-              Iconsax.shopping_bag,
-              Iconsax.heart,
-              Iconsax.message,
-              Iconsax.user,
+            final items = [
+              {'icon': Icons.home, 'label': 'Home'},
+              {'icon': Icons.shopping_bag, 'label': 'Trips'},
+              {'icon': Iconsax.heart, 'label': 'Favorites'},
+              {'icon': Iconsax.message, 'label': 'Blogs'},
+              {'icon': Iconsax.user, 'label': 'Pro'},
             ];
 
             final isSelected = currentIndex == index;
@@ -49,15 +45,33 @@ class CustomBottomNav extends StatelessWidget {
               onTap: () => onTap(index),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isSelected ? Color.fromARGB(255, 238, 128, 139) : Colors.transparent,
-                  shape: BoxShape.circle,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
                 ),
-                child: Icon(
-                  icons[index],
-                  size: 24,
-                  color: isSelected ? Colors.white : Colors.black,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color.fromARGB(255, 238, 128, 139)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      items[index]['icon'] as IconData,
+                      size: 24,
+                      color: isSelected ? Colors.white : Colors.black,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      items[index]['label'] as String,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isSelected ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
