@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html;
 
+import 'package:travana_mobile/screens/personal_detail.dart';
+
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -16,7 +18,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final storage = const FlutterSecureStorage();
-
+  bool showPersonalDetail = false;
   bool isLoading = true;
 
   String? profileImageUrl = '';
@@ -71,7 +73,7 @@ class _ProfilePageState extends State<ProfilePage> {
           profileImageUrl = fixUrl(profile["profile_img"]);
           location = profile["location"] ?? "Ulaanbaatar, Mongolia";
           phone = profile["phone"] ?? 94148451;
-          aboutMe = profile["bio"] ?? "Flutter developer & traveler.";
+          aboutMe = profile["bio"] ?? "bio";
           blogCount = data['blog_count'] ?? 0;
           tripCount = data['trip_count'] ?? 0;
           isLoading = false;
@@ -103,6 +105,23 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (showPersonalDetail) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          title: Text("Personal Detail"),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              setState(() {
+                showPersonalDetail = false;
+              });
+            },
+          ),
+        ),
+        body: PersonalDetailPage(),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -145,45 +164,16 @@ class _ProfilePageState extends State<ProfilePage> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundImage:
-                                (profileImageUrl != null &&
-                                    profileImageUrl!.isNotEmpty)
-                                ? NetworkImage(profileImageUrl!)
-                                : const AssetImage(
-                                        "assets/images/default_profile.avif",
-                                      )
-                                      as ImageProvider,
-                          ),
-                          Positioned(
-                            bottom: -1,
-                            right: -1,
-
-                            child: GestureDetector(
-                              onTap: () => 'ff',
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Color(0xFFEE808B),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 3,
-                                  ),
-                                ),
-                                padding: const EdgeInsets.all(8),
-                                child: const Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                  size: 15,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundImage:
+                            (profileImageUrl != null &&
+                                profileImageUrl!.isNotEmpty)
+                            ? NetworkImage(profileImageUrl!)
+                            : const AssetImage(
+                                    "assets/images/default_profile.avif",
+                                  )
+                                  as ImageProvider,
                       ),
                       SizedBox(width: 20),
 
@@ -273,7 +263,12 @@ class _ProfilePageState extends State<ProfilePage> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        setState(() {
+                          showPersonalDetail =
+                              true; // PersonalDetailPage-г харуулах
+                        });
+                      },
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [

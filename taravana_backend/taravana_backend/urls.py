@@ -33,8 +33,9 @@ router.register(r'blogs',BlogViewSet)
 
 
 
+
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("admin/", admin.site.urls),    
     path('auth/', include('djoser.urls')),
     # 2. Djoser-ийн JWT Login/Logout
     path('auth/', include('djoser.urls.jwt')),
@@ -44,6 +45,7 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('api/me/', get_me, name='me'),
     path('api/profile/update/', update_profile, name='update_profile'),
+    path('api/blogs/<int:blog_id>/like/', toggle_like, name='blog_like')
 
     
   

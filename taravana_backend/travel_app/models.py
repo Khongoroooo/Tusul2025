@@ -48,7 +48,7 @@ class CustomUser(AbstractUser):
 @receiver(post_save, sender=CustomUser)
 def create_user_profile(sender, istance, created, **kwargs):
     if created:
-        Profile.objects.all(user=istance)
+        Profile.objects.create(user=istance)
 
 # --------------------------
 # Country
@@ -110,14 +110,18 @@ class Place(models.Model):
 # --------------------------
 class Blog(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='blogs')
-    place = models.ForeignKey(Place, on_delete=models.CASCADE, related_name='blogs')
-    title = models.CharField(max_length=255)
+    place = models.ForeignKey(Place, on_delete=models.CASCADE, related_name='blogs', blank=True, null=True)
     content = models.TextField()
-    image = models.ImageField(upload_to='blog/', blank=True, null=True)
+    is_public = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
+    
+class BlogImage(models.Model):
+    blog = models.ForeignKey(Blog, on_delete=models.CASCADE, related_name='blog_image')
+    image = models.ImageField(upload_to='blog/', blank=True, null=True)
+
 
 # --------------------------
 # Like
@@ -126,6 +130,8 @@ class Like(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='likes')
     blog = models.ForeignKey(Blog, on_delete=models.CASCADE, related_name='likes')
     created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        unique_together = ('blog', 'user')
 
 # --------------------------
 # UserBadge (many-to-many through)

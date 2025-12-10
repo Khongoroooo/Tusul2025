@@ -20,16 +20,24 @@ def get_me(request):
     response_data["trip_count"] = tripCount
     return Response(response_data)
 
-@api_view(['PUT','PATCH'])
+@api_view(['PATCH', 'PUT'])
 @permission_classes([IsAuthenticated])
 def update_profile(request):
-    profile, created= Profile.objects.get_or_create(user=request.user)
-    serializers = ProfileSerialezer(profile, data=request.data, partial=True)
-    if serializers.is_valid():
-        serializers.save()
-        return Response(serializers.data)
-    return Response(serializers.errors, status=400)
+    profile, created = Profile.objects.get_or_create(user=request.user)
 
+    serializer = ProfileSerialezer(
+        profile,
+        data=request.data,  # request.FILES-ийг дамжуулж байна
+        partial=True,
+        context={'request': request}
+    )
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=400)
+
+ 
 # Country
 class CountryViewSet(viewsets.ModelViewSet):
     queryset = Country.objects.all()
@@ -45,18 +53,34 @@ class PlaceViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'country', 'description', 'tags']
-
+    
 # Blog
 class BlogViewSet(viewsets.ModelViewSet):
     queryset = Blog.objects.all()
     serializer_class = BlogSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['place', 'title', 'content','created_at']
+
     def get_queryset(self):
-        queryset = Blog.objects.filter(user=self.request.user).order_by('-created_at')
-        return queryset
+        user = self.request.user
+        user_id = self.request.query_params.get('user_id')
+        qs = Blog.objects.select_related("user", "user__profile")
+        if user_id:
+            return qs.filter(user_id=user_id).order_by('-created_at')
+        return qs.filter(is_public=True).exclude(user=user).order_by('-created_at')
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
+
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        blog = serializer.save(user=self.request.user)
+        images = self.request.FILES.getlist('images')
+        for img in images:
+            BlogImage.objects.create(blog=blog, image=img)
+
+      
 
 # Trip
 class TripViewSet(viewsets.ModelViewSet):
@@ -88,3 +112,29 @@ class TripViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Trip үүсгэх үед user-г автоматаар онооно
         serializer.save(user=self.request.user)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def toggle_like(request, blog_id):
+    user = request.user
+    try:
+        blog = Blog.objects.get(id=blog_id)
+    except Blog.DoesNotExist:
+        return Response({"ERROR":"Blog not found"}, status=400)
+
+    like = Like.objects.filter(blog=blog, user=user).first()
+    
+    if like:
+        like.delete()
+        liked = False
+    else:
+        Like.objects.create(blog=blog, user=user)
+        liked = True
+
+    likes_count = blog.likes.count()  # like тоо
+    return Response({
+        "message": "liked" if liked else "unliked",
+        "liked": liked,
+        "likes_count": likes_count
+    })
+
