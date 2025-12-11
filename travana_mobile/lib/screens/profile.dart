@@ -141,14 +141,14 @@ class _ProfilePageState extends State<ProfilePage> {
             onPressed: _logout,
             style: ElevatedButton.styleFrom(
               backgroundColor: Color(0xFFEE808B),
-              padding: const EdgeInsets.symmetric(vertical: 15),
+              padding: const EdgeInsets.symmetric(vertical: 18),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
             ),
             child: const Text(
               'Logout',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Colors.white, fontSize: 18),
             ),
           ),
         ),

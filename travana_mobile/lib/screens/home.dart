@@ -107,6 +107,17 @@ class _HomeState extends State<Home> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: Image.asset('images/logo.png', width: 80),
+        actions: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: () {},
+                icon: Icon(Icons.search, color: Colors.black, size: 30),
+              ),
+              SizedBox(width: 20),
+            ],
+          ),
+        ],
       ),
       backgroundColor: Colors.white,
       body: isLoading

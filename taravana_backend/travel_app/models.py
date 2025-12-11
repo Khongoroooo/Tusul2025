@@ -48,7 +48,7 @@ class CustomUser(AbstractUser):
 @receiver(post_save, sender=CustomUser)
 def create_user_profile(sender, istance, created, **kwargs):
     if created:
-        Profile.objects.create(user=istance)
+        Profile.objects.all(user=istance)
 
 # --------------------------
 # Country
@@ -76,19 +76,6 @@ class Profile(models.Model):
     last_name = models.CharField(max_length=100, blank=True, null=True)
     First_name = models.CharField(max_length=100, blank=True, null=True)
 
-
-# --------------------------
-# Badge
-# --------------------------
-class Badge(models.Model):
-    name = models.CharField(max_length=100)
-    description = models.TextField()
-    icon = models.CharField(max_length=255)
-    condition = models.CharField(max_length=255)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
 
 # --------------------------
 # Place
@@ -133,13 +120,6 @@ class Like(models.Model):
     class Meta:
         unique_together = ('blog', 'user')
 
-# --------------------------
-# UserBadge (many-to-many through)
-# --------------------------
-class UserBadge(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='user_badges')
-    badge = models.ForeignKey(Badge, on_delete=models.CASCADE, related_name='user_badges')
-    date_awarded = models.DateTimeField(auto_now_add=True)
 
 # --------------------------
 # Trip

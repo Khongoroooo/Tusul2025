@@ -113,7 +113,10 @@ class _BlogsPageState extends State<BlogsPage> {
         }
 
         if (blogData is List) {
-          blogs = blogData;
+          // Зөвхөн өөрийн блогийг filter хийж авах
+          blogs = blogData
+              .where((b) => b['user']['id'].toString() == userId)
+              .toList();
         }
       }
     } catch (e) {
@@ -121,6 +124,31 @@ class _BlogsPageState extends State<BlogsPage> {
     }
 
     setState(() => isLoading = false);
+  }
+
+  Future<void> toggleLike(int blogId, int index) async {
+    final token = await _getToken();
+    if (token == null) return;
+
+    final url = Uri.parse("http://localhost:8000/api/blogs/$blogId/like/");
+
+    try {
+      final res = await http.post(
+        url,
+        headers: {"Authorization": "Bearer $token"},
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+
+        setState(() {
+          blogs[index]["is_liked"] = data["liked"];
+          blogs[index]["likes_count"] = data["likes_count"];
+        });
+      }
+    } catch (e) {
+      print("LIKE error: $e");
+    }
   }
 
   @override
@@ -159,6 +187,9 @@ class _BlogsPageState extends State<BlogsPage> {
                       final blog = blogs[index];
                       final content = blog['content'] ?? '';
                       final images = blog['images'] as List? ?? [];
+
+                      final bool isLiked = blog["is_liked"] ?? false;
+                      final int likesCount = blog["likes_count"] ?? 0;
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 20),
@@ -234,10 +265,8 @@ class _BlogsPageState extends State<BlogsPage> {
                                 height: 230,
                                 child: PageView.builder(
                                   itemCount: images.length,
-                                  itemBuilder: (context, index) {
-                                    final imgUrl = fixUrl(
-                                      images[index]['image'],
-                                    );
+                                  itemBuilder: (context, i) {
+                                    final imgUrl = fixUrl(images[i]['image']);
                                     return ClipRRect(
                                       borderRadius: BorderRadius.circular(10),
                                       child: Image.network(
@@ -253,19 +282,40 @@ class _BlogsPageState extends State<BlogsPage> {
 
                             const SizedBox(height: 10),
 
-                            // ACTION ICONS
+                            // ACTION ICONS + LIKE COUNT
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Row(
-                                  children: const [
-                                    Icon(
-                                      Iconsax.heart,
-                                      color: Colors.black,
-                                      size: 24,
+                                  children: [
+                                    InkWell(
+                                      onTap: () =>
+                                          toggleLike(blog['id'], index),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            isLiked
+                                                ? Iconsax.heart5
+                                                : Iconsax.heart,
+                                            color: isLiked
+                                                ? Colors.red
+                                                : Colors.black,
+                                            size: 24,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            "$likesCount",
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    SizedBox(width: 20),
-                                    Icon(
+                                    const SizedBox(width: 20),
+                                    const Icon(
                                       Iconsax.message_text,
                                       color: Colors.black,
                                       size: 24,
