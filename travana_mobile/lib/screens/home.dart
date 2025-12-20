@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:iconsax/iconsax.dart';
+import 'package:intl/intl.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -18,29 +19,45 @@ class _HomeState extends State<Home> {
   List<dynamic> blogs = [];
   bool isLoading = true;
 
-  String fixUrl(String? url) {
-    if (url == null || url.isEmpty) return '';
-    if (url.startsWith('http')) return url;
-    return 'http://localhost:8000$url';
-  }
-
   @override
   void initState() {
     super.initState();
     fetchBlogs();
   }
 
-  Future<String?> _getToken() async {
-    if (kIsWeb) {
-      return html.window.localStorage['access_token'];
+  String fixUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http')) return url;
+    return 'http://localhost:8000$url';
+  }
+
+  String formatTime(String dateString) {
+    final date = DateTime.parse(dateString).toLocal();
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inMinutes < 1) {
+      return "Дөнгөж сая";
+    } else if (diff.inMinutes < 60) {
+      return "${diff.inMinutes} минутын өмнө";
+    } else if (diff.inHours < 24) {
+      return "${diff.inHours} цагийн өмнө";
+    } else if (diff.inDays == 1) {
+      return "Өчигдөр";
+    } else if (diff.inDays < 7) {
+      return "${diff.inDays} өдрийн өмнө";
     } else {
-      return await storage.read(key: 'access_token');
+      return DateFormat('yyyy-MM-dd').format(date);
     }
   }
 
-  // -----------------------------
-  //  FETCH BLOGS
-  // -----------------------------
+  Future<String?> _getToken() async {
+    if (kIsWeb) {
+      return html.window.localStorage['access_token'];
+    }
+    return await storage.read(key: 'access_token');
+  }
+
   Future<void> fetchBlogs() async {
     setState(() => isLoading = true);
 
@@ -56,25 +73,16 @@ class _HomeState extends State<Home> {
       );
 
       if (res.statusCode == 200) {
-        dynamic blogData = jsonDecode(res.body);
-
-        if (blogData is Map && blogData.containsKey("results")) {
-          blogs = blogData["results"];
-        } else {
-          blogs = blogData;
-        }
+        final data = jsonDecode(res.body);
+        blogs = data is Map ? data["results"] : data;
       }
     } catch (e) {
-      print("Blog fetch error: $e");
+      debugPrint("Blog fetch error: $e");
     }
 
     setState(() => isLoading = false);
   }
 
-  // -----------------------------
-  // LIKE / UNLIKE
-  // -----------------------------
-  // LIKE / UNLIKE
   Future<void> toggleLike(int blogId, int index) async {
     final token = await _getToken();
     if (token == null) return;
@@ -89,37 +97,31 @@ class _HomeState extends State<Home> {
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-
         setState(() {
-          // Blog map доторхи утгуудыг шууд update хийж байна
           blogs[index]["is_liked"] = data["liked"];
           blogs[index]["likes_count"] = data["likes_count"];
         });
       }
     } catch (e) {
-      print("LIKE error: $e");
+      debugPrint("LIKE error: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: Image.asset('images/logo.png', width: 80),
         actions: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () {},
-                icon: Icon(Icons.search, color: Colors.black, size: 30),
-              ),
-              SizedBox(width: 20),
-            ],
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.search, color: Colors.black, size: 30),
           ),
+          const SizedBox(width: 20),
         ],
       ),
-      backgroundColor: Colors.white,
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
@@ -127,18 +129,16 @@ class _HomeState extends State<Home> {
               itemCount: blogs.length,
               itemBuilder: (context, index) {
                 final blog = blogs[index];
-                final images = blog["images"] as List? ?? [];
+                final images = blog["images"] ?? [];
 
-                final user = blog["user"];
-                final profile = user["profile"];
-
+                final profile = blog["user"]["profile"];
                 final username = profile["username"] ?? "Unknown";
                 final profileImg = fixUrl(profile["profile_img"]);
+                final createdAt = blog["created_at"];
 
-                final bool isLiked = blog["is_liked"] ?? false;
-                final content = blog['content'] ?? '';
-                // final createDate = blog['created_at']??'',
-                final int likesCount = blog["likes_count"] ?? 0;
+                final isLiked = blog["is_liked"] ?? false;
+                final likesCount = blog["likes_count"] ?? 0;
+                final content = blog["content"] ?? "";
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 25),
@@ -157,9 +157,7 @@ class _HomeState extends State<Home> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // -------------------------
-                      // USER HEADER
-                      // -------------------------
+                      /// USER HEADER
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -170,11 +168,13 @@ class _HomeState extends State<Home> {
                                 backgroundImage: profileImg.isNotEmpty
                                     ? NetworkImage(profileImg)
                                     : const AssetImage(
-                                        "assets/images/default.png",
-                                      ),
+                                            "assets/images/default.png",
+                                          )
+                                          as ImageProvider,
                               ),
                               const SizedBox(width: 12),
                               Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     username,
@@ -183,35 +183,30 @@ class _HomeState extends State<Home> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  Text('data'),
+                                  if (createdAt != null)
+                                    Text(
+                                      formatTime(createdAt),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
                                 ],
                               ),
                             ],
                           ),
-                          IconButton(
-                            icon: Icon(Icons.more_horiz, color: Colors.black),
-                            onPressed: () {},
-                          ),
+                          const Icon(Icons.more_horiz),
                         ],
                       ),
-                      // const SizedBox(height: 5),
 
-                      // CONTENT
                       if (content.isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        Text(
-                          content,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.black87,
-                          ),
-                        ),
+                        Text(content, style: const TextStyle(fontSize: 15)),
                       ],
 
                       const SizedBox(height: 12),
-                      // -------------------------
-                      // IMAGES CAROUSEL
-                      // -------------------------
+
+                      /// IMAGES
                       if (images.isNotEmpty)
                         SizedBox(
                           height: 250,
@@ -221,10 +216,36 @@ class _HomeState extends State<Home> {
                               final imgUrl = fixUrl(images[i]["image"]);
                               return ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  imgUrl,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      PageRouteBuilder(
+                                        opaque: false,
+                                        pageBuilder: (_, animation, __) =>
+                                            FadeTransition(
+                                              opacity: animation,
+                                              child: FullScreenImageGallery(
+                                                images: images
+                                                    .map<String>(
+                                                      (e) => fixUrl(e["image"]),
+                                                    )
+                                                    .toList(),
+                                                initialIndex: i,
+                                                blogIndex: index,
+                                              ),
+                                            ),
+                                      ),
+                                    );
+                                  },
+                                  child: Hero(
+                                    tag: 'image$index$i',
+                                    child: Image.network(
+                                      imgUrl,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                    ),
+                                  ),
                                 ),
                               );
                             },
@@ -233,20 +254,14 @@ class _HomeState extends State<Home> {
 
                       const SizedBox(height: 10),
 
-                      // -------------------------
-                      // LIKE + COMMENT + SAVE
-                      // -------------------------
+                      /// ACTIONS
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
                             children: [
-                              // ❤️ LIKE BUTTON
                               InkWell(
-                                onTap: () => toggleLike(
-                                  blog["id"],
-                                  index,
-                                ), // <-- blog id + index
+                                onTap: () => toggleLike(blog["id"], index),
                                 child: Row(
                                   children: [
                                     Icon(
@@ -260,7 +275,6 @@ class _HomeState extends State<Home> {
                                     Text(
                                       "$likesCount",
                                       style: const TextStyle(
-                                        fontSize: 15,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -268,20 +282,10 @@ class _HomeState extends State<Home> {
                                 ),
                               ),
                               const SizedBox(width: 20),
-
-                              const Icon(
-                                Iconsax.message_text,
-                                size: 24,
-                                color: Colors.black,
-                              ),
+                              const Icon(Iconsax.message_text),
                             ],
                           ),
-
-                          const Icon(
-                            Icons.bookmark_border,
-                            size: 26,
-                            color: Colors.black,
-                          ),
+                          const Icon(Icons.bookmark_border),
                         ],
                       ),
                     ],
@@ -289,6 +293,57 @@ class _HomeState extends State<Home> {
                 );
               },
             ),
+    );
+  }
+}
+
+/// 🔥 FULLSCREEN IMAGE + ZOOM + SWIPE
+class FullScreenImageGallery extends StatefulWidget {
+  final List<String> images;
+  final int initialIndex;
+  final int blogIndex;
+
+  const FullScreenImageGallery({
+    super.key,
+    required this.images,
+    required this.initialIndex,
+    required this.blogIndex,
+  });
+
+  @override
+  State<FullScreenImageGallery> createState() => _FullScreenImageGalleryState();
+}
+
+class _FullScreenImageGalleryState extends State<FullScreenImageGallery> {
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black.withOpacity(0.95),
+      body: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: PageView.builder(
+          controller: _pageController,
+          itemCount: widget.images.length,
+          itemBuilder: (context, i) {
+            return Hero(
+              tag: 'image${widget.blogIndex}$i',
+              child: InteractiveViewer(
+                minScale: 1,
+                maxScale: 4,
+                child: Image.network(widget.images[i], fit: BoxFit.contain),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }

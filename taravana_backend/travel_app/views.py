@@ -138,3 +138,55 @@ def toggle_like(request, blog_id):
         "likes_count": likes_count
     })
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import Blog, Comment
+
+# --------------------------
+# Comment нэмэх
+# --------------------------
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_comment(request, blog_id):
+    user = request.user
+    try:
+        blog = Blog.objects.get(id=blog_id)
+    except Blog.DoesNotExist:
+        return Response({"error": "Blog not found"}, status=404)
+
+    content = request.data.get('content', '').strip()
+    if not content:
+        return Response({"error": "Content is required"}, status=400)
+
+    comment = Comment.objects.create(user=user, blog=blog, content=content)
+    return Response({
+        "id": comment.id,
+        "user": user.email,
+        "blog": blog.id,
+        "content": comment.content,
+        "created_at": comment.created_at
+    }, status=201)
+
+# --------------------------
+# Comment жагсаалт авах
+# --------------------------
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_comments(request, blog_id):
+    try:
+        blog = Blog.objects.get(id=blog_id)
+    except Blog.DoesNotExist:
+        return Response({"error": "Blog not found"}, status=404)
+
+    comments = Comment.objects.filter(blog=blog).order_by('-created_at')
+    comments_data = [
+        {
+            "id": c.id,
+            "user": c.user.email,
+            "content": c.content,
+            "created_at": c.created_at,
+        } for c in comments
+    ]
+    return Response(comments_data)
+

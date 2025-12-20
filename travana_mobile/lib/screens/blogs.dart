@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:iconsax/iconsax.dart';
+import 'package:intl/intl.dart';
 import 'package:travana_mobile/screens/add_new_trip.dart';
 
 class BlogsPage extends StatefulWidget {
@@ -32,6 +33,26 @@ class _BlogsPageState extends State<BlogsPage> {
   void initState() {
     super.initState();
     fetchProfileAndBlogs();
+  }
+
+  String formatTime(String dateString) {
+    final date = DateTime.parse(dateString).toLocal();
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inMinutes < 1) {
+      return "Дөнгөж сая";
+    } else if (diff.inMinutes < 60) {
+      return "${diff.inMinutes} минутын өмнө";
+    } else if (diff.inHours < 24) {
+      return "${diff.inHours} цагийн өмнө";
+    } else if (diff.inDays == 1) {
+      return "Өчигдөр";
+    } else if (diff.inDays < 7) {
+      return "${diff.inDays} өдрийн өмнө";
+    } else {
+      return DateFormat('yyyy-MM-dd').format(date);
+    }
   }
 
   Future<String?> _getToken() async {
@@ -187,6 +208,7 @@ class _BlogsPageState extends State<BlogsPage> {
                       final blog = blogs[index];
                       final content = blog['content'] ?? '';
                       final images = blog['images'] as List? ?? [];
+                      final createdAt = blog["created_at"];
 
                       final bool isLiked = blog["is_liked"] ?? false;
                       final int likesCount = blog["likes_count"] ?? 0;
@@ -226,13 +248,25 @@ class _BlogsPageState extends State<BlogsPage> {
                                                 as ImageProvider,
                                     ),
                                     const SizedBox(width: 10),
-                                    Text(
-                                      userName ?? '',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black,
-                                      ),
+                                    Column(
+                                      children: [
+                                        Text(
+                                          userName ?? '',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                        if (createdAt != null)
+                                          Text(
+                                            formatTime(createdAt),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -262,24 +296,51 @@ class _BlogsPageState extends State<BlogsPage> {
 
                             if (images.isNotEmpty)
                               SizedBox(
-                                height: 230,
+                                height: 250,
                                 child: PageView.builder(
                                   itemCount: images.length,
                                   itemBuilder: (context, i) {
-                                    final imgUrl = fixUrl(images[i]['image']);
+                                    final imgUrl = fixUrl(images[i]["image"]);
                                     return ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Image.network(
-                                        imgUrl,
-                                        width: double.infinity,
-                                        height: 230,
-                                        fit: BoxFit.cover,
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            PageRouteBuilder(
+                                              opaque: false,
+                                              pageBuilder: (_, animation, __) =>
+                                                  FadeTransition(
+                                                    opacity: animation,
+                                                    child:
+                                                        FullScreenImageGallery(
+                                                          images: images
+                                                              .map<String>(
+                                                                (e) => fixUrl(
+                                                                  e["image"],
+                                                                ),
+                                                              )
+                                                              .toList(),
+                                                          initialIndex: i,
+                                                          blogIndex: index,
+                                                        ),
+                                                  ),
+                                            ),
+                                          );
+                                        },
+                                        child: Hero(
+                                          tag: 'image$index$i',
+                                          child: Image.network(
+                                            imgUrl,
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                          ),
+                                        ),
                                       ),
                                     );
                                   },
                                 ),
                               ),
-
                             const SizedBox(height: 10),
 
                             // ACTION ICONS + LIKE COUNT
@@ -360,6 +421,57 @@ class _BlogsPageState extends State<BlogsPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
         backgroundColor: const Color.fromARGB(255, 238, 128, 139),
         child: const Icon(Iconsax.add, size: 28, color: Colors.white),
+      ),
+    );
+  }
+}
+
+/// 🔥 FULLSCREEN IMAGE + ZOOM + SWIPE
+class FullScreenImageGallery extends StatefulWidget {
+  final List<String> images;
+  final int initialIndex;
+  final int blogIndex;
+
+  const FullScreenImageGallery({
+    super.key,
+    required this.images,
+    required this.initialIndex,
+    required this.blogIndex,
+  });
+
+  @override
+  State<FullScreenImageGallery> createState() => _FullScreenImageGalleryState();
+}
+
+class _FullScreenImageGalleryState extends State<FullScreenImageGallery> {
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black.withOpacity(0.95),
+      body: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: PageView.builder(
+          controller: _pageController,
+          itemCount: widget.images.length,
+          itemBuilder: (context, i) {
+            return Hero(
+              tag: 'image${widget.blogIndex}$i',
+              child: InteractiveViewer(
+                minScale: 1,
+                maxScale: 4,
+                child: Image.network(widget.images[i], fit: BoxFit.contain),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
