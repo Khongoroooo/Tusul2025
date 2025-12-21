@@ -149,24 +149,17 @@ from .models import Blog, Comment
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def add_comment(request, blog_id):
-    user = request.user
     try:
         blog = Blog.objects.get(id=blog_id)
     except Blog.DoesNotExist:
         return Response({"error": "Blog not found"}, status=404)
 
-    content = request.data.get('content', '').strip()
-    if not content:
-        return Response({"error": "Content is required"}, status=400)
+    serializer = CommentSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(user=request.user, blog=blog)
+        return Response(serializer.data, status=201)
 
-    comment = Comment.objects.create(user=user, blog=blog, content=content)
-    return Response({
-        "id": comment.id,
-        "user": user.email,
-        "blog": blog.id,
-        "content": comment.content,
-        "created_at": comment.created_at
-    }, status=201)
+    return Response(serializer.errors, status=400)
 
 # --------------------------
 # Comment жагсаалт авах
@@ -180,13 +173,61 @@ def list_comments(request, blog_id):
         return Response({"error": "Blog not found"}, status=404)
 
     comments = Comment.objects.filter(blog=blog).order_by('-created_at')
-    comments_data = [
-        {
-            "id": c.id,
-            "user": c.user.email,
-            "content": c.content,
-            "created_at": c.created_at,
-        } for c in comments
-    ]
-    return Response(comments_data)
+    serializer = CommentSerializer(comments, many=True)
+    return Response(serializer.data)
+
+# --------------------------
+# Comment устгах
+# --------------------------
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_comment(request, comment_id):
+    try:
+        comment = Comment.objects.get(id=comment_id)
+    except Comment.DoesNotExist:
+        return Response({"error": "Comment not found"}, status=404)
+
+    # Хэрэв хэрэглэгч нь comment-н эзэн эсвэл admin биш бол зөвшөөрөхгүй
+    if comment.user != request.user and not request.user.is_staff:
+        return Response({"error": "You do not have permission to delete this comment."}, status=403)
+
+    comment.delete()
+    return Response(status=204)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def toggle_save(request, blog_id):
+    user = request.user
+    try:
+        blog = Blog.objects.get(id=blog_id)
+    except Blog.DoesNotExist:
+        return Response({"error": "Blog not found"}, status=404)
+
+    saved_obj = Save.objects.filter(user=user, blog=blog).first()
+
+    if saved_obj:
+        saved_obj.delete()
+        saved = False
+    else:
+        Save.objects.create(user=user, blog=blog)
+        saved = True
+
+    save_count = Save.objects.filter(blog=blog).count()
+    return Response({
+        "message": "saved" if saved else "unsaved",
+        "saved": saved,
+        "save_count": save_count
+    })
+
+# views.py
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def saved_blogs(request):
+    user = request.user
+    saves = Save.objects.filter(user=user).select_related('blog', 'blog__user', 'blog__user__profile')
+    blogs = [s.blog for s in saves]  # Save -> Blog объектууд
+    serializer = BlogSerializer(blogs, many=True, context={'request': request})
+    return Response(serializer.data)
+
+
 

@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
+import 'package:travana_mobile/screens/comments.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -107,6 +108,30 @@ class _HomeState extends State<Home> {
     }
   }
 
+  Future<void> toggleSave(int blogId, int index) async {
+    final token = await _getToken();
+    if (token == null) return;
+
+    final url = Uri.parse('http://127.0.0.1:8000/api/blogs/$blogId/save/');
+
+    try {
+      final res = await http.post(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        setState(() {
+          blogs[index]['is_saved'] = !blogs[index]['is_saved'];
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Алдаа гарлаа: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,6 +160,7 @@ class _HomeState extends State<Home> {
                 final username = profile["username"] ?? "Unknown";
                 final profileImg = fixUrl(profile["profile_img"]);
                 final createdAt = blog["created_at"];
+                final commentsCount = blog["comment_count"] ?? '0';
 
                 final isLiked = blog["is_liked"] ?? false;
                 final likesCount = blog["likes_count"] ?? 0;
@@ -282,10 +308,62 @@ class _HomeState extends State<Home> {
                                 ),
                               ),
                               const SizedBox(width: 20),
-                              const Icon(Iconsax.message_text),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    onPressed: () async {
+                                      final token = await _getToken();
+                                      if (token == null) return;
+
+                                      showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        backgroundColor: Colors.transparent,
+                                        builder: (context) {
+                                          return FractionallySizedBox(
+                                            heightFactor: 0.7,
+                                            child: Container(
+                                              decoration: const BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.vertical(
+                                                      top: Radius.circular(30),
+                                                    ),
+                                              ),
+                                              child: CommentsPage(
+                                                blog: blog,
+                                                token: token,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                    icon: const Icon(Iconsax.message_text),
+                                  ),
+                                  Text(
+                                    commentsCount.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
-                          const Icon(Icons.bookmark_border),
+                          IconButton(
+                            icon: Icon(
+                              blog['is_saved']
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_outline,
+                              color: blog['is_saved']
+                                  ? Colors.pink
+                                  : Colors.grey,
+                            ),
+                            onPressed: () => toggleSave(blog['id'], index),
+                          ),
                         ],
                       ),
                     ],

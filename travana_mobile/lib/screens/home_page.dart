@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:travana_mobile/screens/blogs.dart';
 import 'package:travana_mobile/screens/home.dart';
 import 'package:travana_mobile/screens/profile.dart';
+import 'package:travana_mobile/screens/save.dart';
 import 'package:travana_mobile/screens/trip_bucket_list.dart';
 // import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav.dart';
@@ -19,7 +20,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     Home(),
     TripListPage(),
-    Center(child: Text('Flights Page', style: TextStyle(fontSize: 20))),
+    SavePage(),
 
     BlogsPage(),
     ProfilePage(),

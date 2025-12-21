@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:travana_mobile/screens/add_new_trip.dart';
+import 'package:travana_mobile/screens/comments.dart';
 
 class BlogsPage extends StatefulWidget {
   const BlogsPage({super.key});
@@ -209,6 +210,7 @@ class _BlogsPageState extends State<BlogsPage> {
                       final content = blog['content'] ?? '';
                       final images = blog['images'] as List? ?? [];
                       final createdAt = blog["created_at"];
+                      final commentsCount = blog["comment_count"] ?? '0';
 
                       final bool isLiked = blog["is_liked"] ?? false;
                       final int likesCount = blog["likes_count"] ?? 0;
@@ -376,10 +378,57 @@ class _BlogsPageState extends State<BlogsPage> {
                                       ),
                                     ),
                                     const SizedBox(width: 20),
-                                    const Icon(
-                                      Iconsax.message_text,
-                                      color: Colors.black,
-                                      size: 24,
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          onPressed: () async {
+                                            final token = await _getToken();
+                                            if (token == null) return;
+
+                                            showModalBottomSheet(
+                                              context: context,
+                                              isScrollControlled:
+                                                  true, // 🔥 дэлгэцийн өндөр дүүргэж болно
+                                              backgroundColor: Colors
+                                                  .transparent, // sheet border radius-тэй харагдуулах
+                                              builder: (context) {
+                                                return FractionallySizedBox(
+                                                  heightFactor:
+                                                      0.7, // дэлгэцийн 85% өндөртэй
+                                                  child: Container(
+                                                    decoration: const BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.vertical(
+                                                            top:
+                                                                Radius.circular(
+                                                                  30,
+                                                                ),
+                                                          ),
+                                                    ),
+                                                    child: CommentsPage(
+                                                      blog: blog,
+                                                      token: token,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            );
+                                          },
+                                          icon: const Icon(
+                                            Iconsax.message_text,
+                                          ),
+                                        ),
+
+                                        Text(
+                                          commentsCount.toString(),
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),

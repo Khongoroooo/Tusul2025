@@ -44,8 +44,15 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/', include(router.urls)),
     path('api/me/', get_me, name='me'),
+    path('api/add_comment/<int:blog_id>', add_comment, name='comment'),
     path('api/profile/update/', update_profile, name='update_profile'),
-    path('api/blogs/<int:blog_id>/like/', toggle_like, name='blog_like')
+    path('api/blogs/<int:blog_id>/like/', toggle_like, name='blog_like'),
+    path('api/comments/<int:comment_id>/delete/', delete_comment),
+    path('api/blogs/<int:blog_id>/save/', toggle_save, name='toggle-save'),
+    path('api/saved_blogs/', saved_blogs, name='saved_blogs'),
+
+
+
 
     
   
