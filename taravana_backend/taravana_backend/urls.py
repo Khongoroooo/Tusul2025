@@ -29,7 +29,7 @@ router = routers.DefaultRouter()
 router.register(r'countries',CountryViewSet)
 router.register(r'places',PlaceViewSet)
 router.register(r'trips',TripViewSet, basename='trip')
-router.register(r'blogs',BlogViewSet)
+router.register(r'blogs',BlogViewSet, basename='blog')
 
 
 

@@ -59,15 +59,27 @@ class BlogViewSet(viewsets.ModelViewSet):
     queryset = Blog.objects.all()
     serializer_class = BlogSerializer
     filter_backends = [filters.SearchFilter]
-    search_fields = ['place', 'title', 'content','created_at']
+
+    # 🔍 ХАЙЛТ ХИЙХ ТАЛБАРУУД
+    search_fields = [
+
+        'content',                  # blog content
+        'user__profile__username',  # (хэрвээ profile дээр username байвал)
+    ]
 
     def get_queryset(self):
         user = self.request.user
         user_id = self.request.query_params.get('user_id')
-        qs = Blog.objects.select_related("user", "user__profile")
+
+        qs = Blog.objects.select_related(
+            "user",
+            "user__profile"
+        ).order_by('-created_at')
+
         if user_id:
-            return qs.filter(user_id=user_id).order_by('-created_at')
-        return qs.filter(is_public=True).exclude(user=user).order_by('-created_at')
+            return qs.filter(user_id=user_id)
+
+        return qs.filter(is_public=True).exclude(user=user)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()

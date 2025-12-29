@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:travana_mobile/screens/comments.dart';
+import 'package:travana_mobile/screens/search_page.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -141,9 +142,15 @@ class _HomeState extends State<Home> {
         title: Image.asset('images/logo.png', width: 80),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SearchPage()),
+              );
+            },
             icon: const Icon(Icons.search, color: Colors.black, size: 30),
           ),
+
           const SizedBox(width: 20),
         ],
       ),

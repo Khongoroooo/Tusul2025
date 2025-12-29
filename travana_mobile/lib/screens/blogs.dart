@@ -8,6 +8,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:travana_mobile/screens/add_new_trip.dart';
 import 'package:travana_mobile/screens/comments.dart';
+import 'package:travana_mobile/screens/search_page.dart';
 
 class BlogsPage extends StatefulWidget {
   const BlogsPage({super.key});
@@ -187,9 +188,15 @@ class _BlogsPageState extends State<BlogsPage> {
           Row(
             children: [
               IconButton(
-                onPressed: () {},
-                icon: Icon(Icons.search, color: Colors.black, size: 30),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SearchPage()),
+                  );
+                },
+                icon: const Icon(Icons.search, color: Colors.black, size: 30),
               ),
+
               SizedBox(width: 20),
             ],
           ),
