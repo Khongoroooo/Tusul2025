@@ -7,9 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:travana_mobile/screens/add_new_trip.dart';
 import 'package:travana_mobile/screens/trip_detail.dart';
 
-/// Web-д зориулсан localStorage
-/// kIsWeb true бол import 'dart:html' ашиглана
-/// Тиймээс web-д ажиллуулахад token авахад ашиглана
+// Web-д зориулсан localStorage
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
@@ -20,7 +18,8 @@ class TripListPage extends StatefulWidget {
   State<TripListPage> createState() => _TripListPageState();
 }
 
-class _TripListPageState extends State<TripListPage> {
+class _TripListPageState extends State<TripListPage>
+    with SingleTickerProviderStateMixin {
   final storage = const FlutterSecureStorage();
   List<dynamic> trips = [];
   List<dynamic> filterTrips = [];
@@ -29,16 +28,33 @@ class _TripListPageState extends State<TripListPage> {
   final TextEditingController _searchController = TextEditingController();
   String? userId;
 
+  late AnimationController _animationController;
+  late Animation<double> _animation;
+
   @override
   void initState() {
     super.initState();
+    // Animation initialize
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.9, end: 1.1).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+
     fetchTrips();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<String?> _getToken() async {
     if (kIsWeb) {
       print("WEB TOKEN: ${html.window.localStorage['access_token']}");
-
       return html.window.localStorage['access_token'];
     } else {
       return await storage.read(key: 'access_token');
@@ -184,324 +200,371 @@ class _TripListPageState extends State<TripListPage> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: SearchBarWidget(
-                controller: _searchController,
-                hintText: 'Trips search...',
-                onChanged: (_) => setState(() {}),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : trips.isEmpty
+          ? Center(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ScaleTransition(
+                      scale: _animation,
+                      child: SizedBox(
+                        width: 150,
+                        height: 150,
+                        child: Image.asset(
+                          "assets/images/cute.gif",
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Танд одоогоор аялал байхгүй байна",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black54,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
               ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildChip('planned', 'Want to visit'),
-                const SizedBox(width: 16),
-                _buildChip('completed', 'Completed'),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : displayedTrips.isEmpty
-                  ? const Center(child: Text("No trips found"))
-                  : GridView.builder(
-                      padding: const EdgeInsets.all(10),
-                      itemCount: displayedTrips.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.8,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                          ),
-                      itemBuilder: (context, index) {
-                        final item = displayedTrips[index];
-                        String formattedDate = "";
-                        if (item['created_at'] != null) {
-                          final date = DateTime.parse(item['created_at']);
-                          formattedDate =
-                              "${date.year}-${date.month}-${date.day}";
-                        }
-                        return GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => TripDetail(trip: item),
-                            ),
-                          ),
-                          child: Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            elevation: 4,
-                            child: Column(
-                              children: [
-                                Expanded(
-                                  child: Stack(
+            )
+          : SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: SearchBarWidget(
+                      controller: _searchController,
+                      hintText: 'Trips search...',
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildChip('planned', 'Want to visit'),
+                      const SizedBox(width: 16),
+                      _buildChip('completed', 'Completed'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: displayedTrips.isEmpty
+                        ? const Center(child: Text("No trips found"))
+                        : GridView.builder(
+                            padding: const EdgeInsets.all(10),
+                            itemCount: displayedTrips.length,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  childAspectRatio: 0.8,
+                                  crossAxisSpacing: 8,
+                                  mainAxisSpacing: 8,
+                                ),
+                            itemBuilder: (context, index) {
+                              final item = displayedTrips[index];
+                              String formattedDate = "";
+                              if (item['created_at'] != null) {
+                                final date = DateTime.parse(item['created_at']);
+                                formattedDate =
+                                    "${date.year}-${date.month}-${date.day}";
+                              }
+                              return GestureDetector(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        TripDetail(trip: item),
+                                  ),
+                                ),
+                                child: Card(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  elevation: 4,
+                                  child: Column(
                                     children: [
-                                      ClipRRect(
-                                        borderRadius:
-                                            const BorderRadius.vertical(
-                                              top: Radius.circular(15),
-                                              bottom: Radius.circular(15),
-                                            ),
-                                        child: Container(
-                                          width: double.infinity,
-                                          height: double.infinity,
-                                          color: const Color.fromARGB(
-                                            255,
-                                            251,
-                                            251,
-                                            251,
-                                          ),
-                                          child: item['image'] != null
-                                              ? Image.network(
-                                                  item['image']
-                                                      .toString()
-                                                      .replaceFirst(
-                                                        '127.0.0.1',
-                                                        'localhost',
+                                      Expanded(
+                                        child: Stack(
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius:
+                                                  const BorderRadius.vertical(
+                                                    top: Radius.circular(15),
+                                                    bottom: Radius.circular(15),
+                                                  ),
+                                              child: Container(
+                                                width: double.infinity,
+                                                height: double.infinity,
+                                                color: const Color.fromARGB(
+                                                  255,
+                                                  251,
+                                                  251,
+                                                  251,
+                                                ),
+                                                child: item['image'] != null
+                                                    ? Image.network(
+                                                        item['image']
+                                                            .toString()
+                                                            .replaceFirst(
+                                                              '127.0.0.1',
+                                                              'localhost',
+                                                            ),
+                                                        fit: BoxFit.cover,
+                                                      )
+                                                    : const Center(
+                                                        child: Icon(
+                                                          Icons
+                                                              .image_not_supported,
+                                                          size: 50,
+                                                          color: Colors.grey,
+                                                        ),
                                                       ),
-                                                  fit: BoxFit.cover,
-                                                )
-                                              : const Center(
-                                                  child: Icon(
-                                                    Icons.image_not_supported,
-                                                    size: 50,
-                                                    color: Colors.grey,
+                                              ),
+                                            ),
+                                            Positioned(
+                                              top: 10,
+                                              left: 10,
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      item['status'] ==
+                                                          'planned'
+                                                      ? Colors.lightBlue
+                                                      : Colors.green,
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: Text(
+                                                  item['status'] == 'planned'
+                                                      ? 'Planned'
+                                                      : 'Completed',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        top: 10,
-                                        left: 10,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: item['status'] == 'planned'
-                                                ? Colors.lightBlue
-                                                : Colors.green,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
+                                              ),
                                             ),
-                                          ),
-                                          child: Text(
-                                            item['status'] == 'planned'
-                                                ? 'Planned'
-                                                : 'Completed',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        top: 10,
-                                        right: 1,
-                                        child: PopupMenuButton<String>(
-                                          onSelected: (value) async {
-                                            if (value == 'edit') {
-                                              final updatedTrip =
-                                                  await showModalBottomSheet(
-                                                    context: context,
-                                                    isScrollControlled: true,
-                                                    backgroundColor:
-                                                        Colors.white,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.vertical(
-                                                            top:
-                                                                Radius.circular(
-                                                                  20,
+                                            Positioned(
+                                              top: 10,
+                                              right: 1,
+                                              child: PopupMenuButton<String>(
+                                                onSelected: (value) async {
+                                                  if (value == 'edit') {
+                                                    final updatedTrip =
+                                                        await showModalBottomSheet(
+                                                          context: context,
+                                                          isScrollControlled:
+                                                              true,
+                                                          backgroundColor:
+                                                              Colors.white,
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius.vertical(
+                                                                  top:
+                                                                      Radius.circular(
+                                                                        20,
+                                                                      ),
                                                                 ),
                                                           ),
-                                                    ),
-                                                    builder: (_) =>
-                                                        AddNewTripModal(
-                                                          trip: item,
+                                                          builder: (_) =>
+                                                              AddNewTripModal(
+                                                                trip: item,
+                                                              ),
+                                                        );
+                                                    if (updatedTrip != null) {
+                                                      setState(() {
+                                                        final index = trips
+                                                            .indexWhere(
+                                                              (t) =>
+                                                                  t['id'] ==
+                                                                  updatedTrip['id'],
+                                                            );
+                                                        trips[index] =
+                                                            updatedTrip;
+                                                        filterTrips[index] =
+                                                            updatedTrip;
+                                                      });
+                                                    }
+                                                  } else if (value ==
+                                                      'rename') {
+                                                    _showRenameDialog(item);
+                                                  } else if (value ==
+                                                      'delete') {
+                                                    showDialog(
+                                                      context: context,
+                                                      builder: (_) => AlertDialog(
+                                                        title: const Text(
+                                                          'Delete trip?',
                                                         ),
-                                                  );
-                                              if (updatedTrip != null) {
-                                                setState(() {
-                                                  final index = trips
-                                                      .indexWhere(
-                                                        (t) =>
-                                                            t['id'] ==
-                                                            updatedTrip['id'],
-                                                      );
-                                                  trips[index] = updatedTrip;
-                                                  filterTrips[index] =
-                                                      updatedTrip;
-                                                });
-                                              }
-                                            } else if (value == 'rename') {
-                                              _showRenameDialog(item);
-                                            } else if (value == 'delete') {
-                                              showDialog(
-                                                context: context,
-                                                builder: (_) => AlertDialog(
-                                                  title: const Text(
-                                                    'Delete trip?',
-                                                  ),
-                                                  content: const Text(
-                                                    "Are you sure you want to delete this trip?",
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                            context,
+                                                        content: const Text(
+                                                          "Are you sure you want to delete this trip?",
+                                                        ),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.pop(
+                                                                  context,
+                                                                ),
+                                                            child: const Text(
+                                                              "Cancel",
+                                                            ),
                                                           ),
-                                                      child: const Text(
-                                                        "Cancel",
+                                                          TextButton(
+                                                            onPressed: () async {
+                                                              Navigator.pop(
+                                                                context,
+                                                              );
+                                                              await deleteTrip(
+                                                                item['id'],
+                                                              );
+                                                            },
+                                                            child: const Text(
+                                                              'Delete',
+                                                              style: TextStyle(
+                                                                color:
+                                                                    Colors.red,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                  }
+                                                },
+                                                color: Colors.white,
+                                                elevation: 6,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.more_vert,
+                                                  color: Color.fromARGB(
+                                                    255,
+                                                    200,
+                                                    200,
+                                                    200,
+                                                  ),
+                                                  size: 22,
+                                                ),
+                                                itemBuilder: (context) => [
+                                                  const PopupMenuItem(
+                                                    value: 'edit',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.edit,
+                                                          size: 18,
+                                                        ),
+                                                        SizedBox(width: 10),
+                                                        Text("Edit trip"),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  const PopupMenuItem(
+                                                    value: 'rename',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons
+                                                              .drive_file_rename_outline,
+                                                          size: 18,
+                                                        ),
+                                                        SizedBox(width: 10),
+                                                        Text("Rename"),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  const PopupMenuItem(
+                                                    value: 'delete',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.delete,
+                                                          color: Colors.red,
+                                                          size: 18,
+                                                        ),
+                                                        SizedBox(width: 10),
+                                                        Text(
+                                                          "Delete",
+                                                          style: TextStyle(
+                                                            color: Colors.red,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Positioned(
+                                              bottom: 10,
+                                              left: 10,
+                                              right: 10,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.black
+                                                      .withOpacity(0.55),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      item['title'] ?? '',
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 14,
                                                       ),
                                                     ),
-                                                    TextButton(
-                                                      onPressed: () async {
-                                                        Navigator.pop(context);
-                                                        await deleteTrip(
-                                                          item['id'],
-                                                        );
-                                                      },
-                                                      child: const Text(
-                                                        'Delete',
-                                                        style: TextStyle(
-                                                          color: Colors.red,
-                                                        ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      formattedDate,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
                                                       ),
                                                     ),
                                                   ],
                                                 ),
-                                              );
-                                            }
-                                          },
-                                          color: Colors.white,
-                                          elevation: 6,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.more_vert,
-                                            color: Color.fromARGB(
-                                              255,
-                                              200,
-                                              200,
-                                              200,
-                                            ),
-                                            size: 22,
-                                          ),
-                                          itemBuilder: (context) => [
-                                            const PopupMenuItem(
-                                              value: 'edit',
-                                              child: Row(
-                                                children: [
-                                                  Icon(Icons.edit, size: 18),
-                                                  SizedBox(width: 10),
-                                                  Text("Edit trip"),
-                                                ],
-                                              ),
-                                            ),
-                                            const PopupMenuItem(
-                                              value: 'rename',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons
-                                                        .drive_file_rename_outline,
-                                                    size: 18,
-                                                  ),
-                                                  SizedBox(width: 10),
-                                                  Text("Rename"),
-                                                ],
-                                              ),
-                                            ),
-                                            const PopupMenuItem(
-                                              value: 'delete',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.delete,
-                                                    color: Colors.red,
-                                                    size: 18,
-                                                  ),
-                                                  SizedBox(width: 10),
-                                                  Text(
-                                                    "Delete",
-                                                    style: TextStyle(
-                                                      color: Colors.red,
-                                                    ),
-                                                  ),
-                                                ],
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                      Positioned(
-                                        bottom: 10,
-                                        left: 10,
-                                        right: 10,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(
-                                              0.55,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                item['title'] ?? '',
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                formattedDate,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final newTrip = await showModalBottomSheet(
@@ -523,6 +586,12 @@ class _TripListPageState extends State<TripListPage> {
                 filterTrips.add(newTrip);
               }
             });
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TripDetail(trip: newTrip),
+              ),
+            );
           }
         },
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),

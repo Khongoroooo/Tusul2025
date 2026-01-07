@@ -14,8 +14,8 @@ def get_me(request):
     user = request.user
     blogCount = Blog.objects.filter(user=user).count()
     tripCount = Trip.objects.filter(user=user).count()
-    serializers = UserSerializer(user)
-    response_data = serializers.data
+    serializer = UserSerializer(user)
+    response_data = serializer.data
     response_data["blog_count"] = blogCount
     response_data["trip_count"] = tripCount
     return Response(response_data)
@@ -25,7 +25,7 @@ def get_me(request):
 def update_profile(request):
     profile, created = Profile.objects.get_or_create(user=request.user)
 
-    serializer = ProfileSerialezer(
+    serializer = ProfileSerializer(
         profile,
         data=request.data,  # request.FILES-ийг дамжуулж байна
         partial=True,
@@ -64,7 +64,8 @@ class BlogViewSet(viewsets.ModelViewSet):
     search_fields = [
 
         'content',                  # blog content
-        'user__profile__username',  # (хэрвээ profile дээр username байвал)
+        'user__profile__username',
+           'place__name', # (хэрвээ profile дээр username байвал)
     ]
 
     def get_queryset(self):
@@ -87,7 +88,7 @@ class BlogViewSet(viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        blog = serializer.save(user=self.request.user)
+        blog = serializer.save()
         images = self.request.FILES.getlist('images')
         for img in images:
             BlogImage.objects.create(blog=blog, image=img)
@@ -243,3 +244,20 @@ def saved_blogs(request):
 
 
 
+# --------------------------
+# Blog устгах
+# --------------------------
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_blog(request, blog_id):
+    try:
+        blog = Blog.objects.get(id=blog_id)
+    except Blog.DoesNotExist:
+        return Response({"detail": "No Blog matches the given query."}, status=404)
+
+    # Зөвхөн эзэн хэрэглэгч устгах боломжтой
+    if blog.user != request.user and not request.user.is_staff:
+        return Response({"error": "You do not have permission to delete this blog."}, status=403)
+
+    blog.delete()
+    return Response(status=204)

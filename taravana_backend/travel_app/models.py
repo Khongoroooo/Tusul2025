@@ -46,9 +46,9 @@ class CustomUser(AbstractUser):
         return self.email
 
 @receiver(post_save, sender=CustomUser)
-def create_user_profile(sender, istance, created, **kwargs):
+def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.all(user=istance)
+        Profile.objects.create(user=instance)
 
 # --------------------------
 # Country
@@ -103,7 +103,7 @@ class Blog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.title
+        return self.content
     
 class BlogImage(models.Model):
     blog = models.ForeignKey(Blog, on_delete=models.CASCADE, related_name='blog_image')

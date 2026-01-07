@@ -50,6 +50,8 @@ urlpatterns = [
     path('api/comments/<int:comment_id>/delete/', delete_comment),
     path('api/blogs/<int:blog_id>/save/', toggle_save, name='toggle-save'),
     path('api/saved_blogs/', saved_blogs, name='saved_blogs'),
+    path('api/blogs/<int:blog_id>/delete/', delete_blog, name='delete_blog'),
+
 
 
 

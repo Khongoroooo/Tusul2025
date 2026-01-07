@@ -6,7 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
-import 'package:travana_mobile/screens/add_new_trip.dart';
+import 'package:travana_mobile/screens/add_new_blog.dart';
 import 'package:travana_mobile/screens/comments.dart';
 import 'package:travana_mobile/screens/search_page.dart';
 
@@ -17,13 +17,17 @@ class BlogsPage extends StatefulWidget {
   State<BlogsPage> createState() => _BlogsPageState();
 }
 
-class _BlogsPageState extends State<BlogsPage> {
+class _BlogsPageState extends State<BlogsPage>
+    with SingleTickerProviderStateMixin {
   final storage = const FlutterSecureStorage();
   List<dynamic> blogs = [];
   bool isLoading = true;
   String? userId;
   String? profileImgUrl;
   String? userName;
+
+  late AnimationController _animationController;
+  late Animation<double> _animation;
 
   String fixUrl(String? url) {
     if (url == null || url.isEmpty) return '';
@@ -35,6 +39,21 @@ class _BlogsPageState extends State<BlogsPage> {
   void initState() {
     super.initState();
     fetchProfileAndBlogs();
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(begin: 0.9, end: 1.1).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   String formatTime(String dateString) {
@@ -136,7 +155,6 @@ class _BlogsPageState extends State<BlogsPage> {
         }
 
         if (blogData is List) {
-          // Зөвхөн өөрийн блогийг filter хийж авах
           blogs = blogData
               .where((b) => b['user']['id'].toString() == userId)
               .toList();
@@ -174,36 +192,170 @@ class _BlogsPageState extends State<BlogsPage> {
     }
   }
 
+  void _editBlog(dynamic blog) async {
+    final result = await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: AddNewBlogPage(blog: blog),
+      ),
+    );
+
+    if (result != null) {
+      await fetchProfileAndBlogs();
+    }
+  }
+
+  Future<void> _deleteBlog(int blogId, int index) async {
+    final token = await _getToken();
+    if (token == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Устгах уу?'),
+        content: const Text('Энэ блогийг бүр мөсөн устгах уу?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Болих'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Устгах', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final url = Uri.parse('http://localhost:8000/api/blogs/$blogId/delete/');
+
+    try {
+      final res = await http.delete(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (res.statusCode == 204 || res.statusCode == 200) {
+        setState(() {
+          blogs.removeAt(index);
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Blog устгах боломжгүй байна')),
+        );
+      }
+    } catch (e) {
+      print('DELETE error: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Алдаа гарлаа')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: Text(
+        title: const Text(
           'My blogs',
           style: TextStyle(color: Colors.black, fontSize: 22),
         ),
         actions: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SearchPage()),
-                  );
-                },
-                icon: const Icon(Icons.search, color: Colors.black, size: 30),
-              ),
-
-              SizedBox(width: 20),
-            ],
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SearchPage()),
+              );
+            },
+            icon: const Icon(Icons.search, color: Colors.black, size: 30),
           ),
         ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
+          : blogs.isEmpty
+          ? Center(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ScaleTransition(
+                      scale: _animation,
+                      child: SizedBox(
+                        width: 150,
+                        height: 150,
+                        child: Image.asset(
+                          "assets/images/cute.gif",
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      "Танд одоогоор блог байхгүй байна",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black54,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final result = await showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.white,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                          ),
+                          builder: (context) => FractionallySizedBox(
+                            heightFactor: 0.55,
+                            child: AddNewBlogPage(),
+                          ),
+                        );
+
+                        if (result != null) {
+                          await fetchProfileAndBlogs();
+                        }
+                      },
+                      icon: const Icon(Iconsax.add),
+                      label: const Text("Блог нэмэх"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(
+                          255,
+                          238,
+                          128,
+                          139,
+                        ),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -215,10 +367,11 @@ class _BlogsPageState extends State<BlogsPage> {
                     itemBuilder: (context, index) {
                       final blog = blogs[index];
                       final content = blog['content'] ?? '';
+                      final placeName =
+                          blog['place']?['name'] ?? 'Тодорхойгүй газар';
                       final images = blog['images'] as List? ?? [];
                       final createdAt = blog["created_at"];
                       final commentsCount = blog["comment_count"] ?? '0';
-
                       final bool isLiked = blog["is_liked"] ?? false;
                       final int likesCount = blog["likes_count"] ?? 0;
 
@@ -239,7 +392,6 @@ class _BlogsPageState extends State<BlogsPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // PROFILE TOP
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -258,6 +410,8 @@ class _BlogsPageState extends State<BlogsPage> {
                                     ),
                                     const SizedBox(width: 10),
                                     Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           userName ?? '',
@@ -279,17 +433,50 @@ class _BlogsPageState extends State<BlogsPage> {
                                     ),
                                   ],
                                 ),
-                                IconButton(
-                                  icon: Icon(
+                                PopupMenuButton<String>(
+                                  icon: const Icon(
                                     Icons.more_horiz,
                                     color: Colors.black,
                                   ),
-                                  onPressed: () {},
+                                  onSelected: (value) {
+                                    if (value == 'edit') {
+                                      _editBlog(blog);
+                                    } else if (value == 'delete') {
+                                      _deleteBlog(blog['id'], index);
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.edit, size: 18),
+                                          SizedBox(width: 8),
+                                          Text('Засах'),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.delete,
+                                            size: 18,
+                                            color: Colors.red,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Устгах',
+                                            style: TextStyle(color: Colors.red),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-
-                            // CONTENT
                             if (content.isNotEmpty) ...[
                               const SizedBox(height: 12),
                               Text(
@@ -300,9 +487,7 @@ class _BlogsPageState extends State<BlogsPage> {
                                 ),
                               ),
                             ],
-
                             const SizedBox(height: 12),
-
                             if (images.isNotEmpty)
                               SizedBox(
                                 height: 250,
@@ -351,8 +536,25 @@ class _BlogsPageState extends State<BlogsPage> {
                                 ),
                               ),
                             const SizedBox(height: 10),
-
-                            // ACTION ICONS + LIKE COUNT
+                            // PLACE NAME
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.place,
+                                  color: Color.fromARGB(255, 238, 128, 139),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  placeName,
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -394,14 +596,12 @@ class _BlogsPageState extends State<BlogsPage> {
 
                                             showModalBottomSheet(
                                               context: context,
-                                              isScrollControlled:
-                                                  true, // 🔥 дэлгэцийн өндөр дүүргэж болно
-                                              backgroundColor: Colors
-                                                  .transparent, // sheet border radius-тэй харагдуулах
+                                              isScrollControlled: true,
+                                              backgroundColor:
+                                                  Colors.transparent,
                                               builder: (context) {
                                                 return FractionallySizedBox(
-                                                  heightFactor:
-                                                      0.7, // дэлгэцийн 85% өндөртэй
+                                                  heightFactor: 0.7,
                                                   child: Container(
                                                     decoration: const BoxDecoration(
                                                       color: Colors.white,
@@ -426,10 +626,9 @@ class _BlogsPageState extends State<BlogsPage> {
                                             Iconsax.message_text,
                                           ),
                                         ),
-
                                         Text(
                                           commentsCount.toString(),
-                                          style: TextStyle(
+                                          style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             color: Colors.black,
@@ -456,22 +655,21 @@ class _BlogsPageState extends State<BlogsPage> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          final newTrip = await showModalBottomSheet(
+          final result = await showModalBottomSheet(
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
+            shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            builder: (_) => const Padding(
-              padding: EdgeInsets.all(16),
-              child: AddNewTripModal(),
+            builder: (context) => FractionallySizedBox(
+              heightFactor: 0.5,
+              child: AddNewBlogPage(),
             ),
           );
-          if (newTrip != null) {
-            setState(() {
-              blogs.add(newTrip);
-            });
+
+          if (result != null) {
+            await fetchProfileAndBlogs();
           }
         },
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
@@ -482,7 +680,6 @@ class _BlogsPageState extends State<BlogsPage> {
   }
 }
 
-/// 🔥 FULLSCREEN IMAGE + ZOOM + SWIPE
 class FullScreenImageGallery extends StatefulWidget {
   final List<String> images;
   final int initialIndex;

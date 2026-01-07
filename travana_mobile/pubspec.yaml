@@ -33,3 +33,4 @@ flutter:
 
   assets:
     - assets/images/default.png
+    - assets/images/cute.gif

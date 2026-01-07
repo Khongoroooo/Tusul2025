@@ -124,6 +124,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
     return Scaffold(
       appBar: AppBar(
+        title: Text('Profile'),
         backgroundColor: Colors.white,
         actions: [
           IconButton(
@@ -201,18 +202,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     Text('Blogs'),
                                   ],
                                 ),
-                                SizedBox(width: 35),
-                                Column(
-                                  children: [
-                                    Text(
-                                      tripCount.toString() ?? '0',
-                                      style: TextStyle(color: Colors.black),
-                                    ),
-                                    SizedBox(height: 5),
-                                    Text('Trips'),
-                                  ],
-                                ),
-                                SizedBox(width: 35),
+                                SizedBox(width: 60),
                                 Column(
                                   children: [
                                     Text(

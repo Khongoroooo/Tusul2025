@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 class SavePage extends StatefulWidget {
@@ -21,13 +24,13 @@ class _SavePageState extends State<SavePage> {
   }
 
   Future<void> _fetchSavedBlogs() async {
-    final token = widget.token;
+    final token = widget.token ?? await _getToken();
     if (token == null) {
       debugPrint("Token is null");
+      setState(() => isLoading = false);
       return;
     }
 
-    // Android emulator-д зориулсан localhost
     final url = Uri.parse('http://10.0.2.2:8000/api/saved_blogs/');
 
     try {
@@ -35,9 +38,6 @@ class _SavePageState extends State<SavePage> {
         url,
         headers: {'Authorization': 'Bearer $token'},
       );
-
-      debugPrint('Response status: ${res.statusCode}');
-      debugPrint('Response body: ${res.body}');
 
       if (res.statusCode == 200) {
         final List<dynamic> blogs = jsonDecode(res.body);
@@ -58,8 +58,40 @@ class _SavePageState extends State<SavePage> {
   String fixUrl(String? url) {
     if (url == null || url.isEmpty) return '';
     if (url.startsWith('http')) return url;
-    // Android emulator-д зориулсан localhost
+    if (kIsWeb) return 'http://localhost:8000$url';
     return 'http://10.0.2.2:8000$url';
+  }
+
+  Future<String?> _getToken() async {
+    if (widget.token != null) return widget.token;
+    if (kIsWeb) return html.window.localStorage['access_token'];
+    return await const FlutterSecureStorage().read(key: 'access_token');
+  }
+
+  Future<void> toggleSave(int blogId) async {
+    final token = await _getToken();
+    if (token == null) return;
+
+    final url = Uri.parse('http://10.0.2.2:8000/api/blogs/$blogId/save/');
+
+    try {
+      final res = await http.post(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        setState(() {
+          // toggle хийх
+          final index = savedBlogs.indexWhere((b) => b['id'] == blogId);
+          if (index != -1) savedBlogs.removeAt(index);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Алдаа гарлаа: $e')));
+    }
   }
 
   @override
@@ -115,6 +147,10 @@ class _SavePageState extends State<SavePage> {
                             Text(content),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        onPressed: () => toggleSave(blog['id']),
+                        icon: const Icon(Icons.delete, color: Colors.red),
                       ),
                     ],
                   ),

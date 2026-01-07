@@ -129,9 +129,7 @@ class _AddNewTripModalState extends State<AddNewTripModal> {
 
     if (response.statusCode == 201 || response.statusCode == 200) {
       Navigator.pop(context, jsonDecode(respStr));
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Trip saved successfully!")));
+      ScaffoldMessenger.of(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed (${response.statusCode})")),

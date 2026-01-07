@@ -8,6 +8,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:travana_mobile/screens/comments.dart';
 import 'package:travana_mobile/screens/search_page.dart';
+import 'package:travana_mobile/screens/user_profile_blog.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -150,7 +151,6 @@ class _HomeState extends State<Home> {
             },
             icon: const Icon(Icons.search, color: Colors.black, size: 30),
           ),
-
           const SizedBox(width: 20),
         ],
       ),
@@ -167,6 +167,7 @@ class _HomeState extends State<Home> {
                 final username = profile["username"] ?? "Unknown";
                 final profileImg = fixUrl(profile["profile_img"]);
                 final createdAt = blog["created_at"];
+                final placeName = blog['place']?['name'] ?? 'Тодорхойгүй газар';
                 final commentsCount = blog["comment_count"] ?? '0';
 
                 final isLiked = blog["is_liked"] ?? false;
@@ -191,45 +192,50 @@ class _HomeState extends State<Home> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       /// USER HEADER
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 22,
-                                backgroundImage: profileImg.isNotEmpty
-                                    ? NetworkImage(profileImg)
-                                    : const AssetImage(
-                                            "assets/images/default.png",
-                                          )
-                                          as ImageProvider,
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  UserProfilePage(userId: blog['user']['id']),
+                            ),
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundImage: profileImg.isNotEmpty
+                                  ? NetworkImage(profileImg)
+                                  : const AssetImage(
+                                          "assets/images/default.png",
+                                        )
+                                        as ImageProvider,
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  username,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (createdAt != null)
                                   Text(
-                                    username,
+                                    formatTime(createdAt),
                                     style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                      color: Colors.grey,
                                     ),
                                   ),
-                                  if (createdAt != null)
-                                    Text(
-                                      formatTime(createdAt),
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const Icon(Icons.more_horiz),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
 
                       if (content.isNotEmpty) ...[
@@ -285,6 +291,26 @@ class _HomeState extends State<Home> {
                           ),
                         ),
 
+                      const SizedBox(height: 10),
+
+                      /// PLACE
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.place,
+                            color: Color.fromARGB(255, 238, 128, 139),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            placeName,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 10),
 
                       /// ACTIONS
@@ -382,7 +408,6 @@ class _HomeState extends State<Home> {
   }
 }
 
-/// 🔥 FULLSCREEN IMAGE + ZOOM + SWIPE
 class FullScreenImageGallery extends StatefulWidget {
   final List<String> images;
   final int initialIndex;

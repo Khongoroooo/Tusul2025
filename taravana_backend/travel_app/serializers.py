@@ -99,9 +99,16 @@ class CommentSerializer(serializers.ModelSerializer):
 # Blog Serializer
 # -----------------------------
 class BlogSerializer(serializers.ModelSerializer):
+    # Write-д ашиглах зориулалттай field
+    place_id = serializers.IntegerField(write_only=True, required=False)
+
+    # Read-only nested fields
+    place = PlaceSerializer(read_only=True)
     user = UserSerializer(read_only=True)
     images = BlogImageSerializer(source='blog_image', many=True, read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
+
+    # Computed fields
     comment_count = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
@@ -109,24 +116,47 @@ class BlogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Blog
-        fields = ['id', 'user', 'place', 'content', 'images', 'created_at', 'is_public',
-                  'likes_count', 'is_liked', 'is_saved', 'comment_count', 'comments']
+        fields = [
+            'id', 'user', 'place', 'place_id', 'content', 'images', 'created_at', 
+            'is_public', 'likes_count', 'is_liked', 'is_saved', 
+            'comment_count', 'comments'
+        ]
 
+    def create(self, validated_data):
+        # request.user-г context-аас авна
+        user = self.context['request'].user
+        place_id = validated_data.pop('place_id', None)
+        place = Place.objects.get(id=place_id) if place_id else None
+
+        # Блогийг үүсгэнэ, user-г энд дамжуулна
+        blog = Blog.objects.create(user=user, place=place, **validated_data)
+        return blog
+
+    def update(self, instance, validated_data):
+        place_id = validated_data.pop('place_id', None)
+        if place_id:
+            instance.place = Place.objects.get(id=place_id)
+        instance.content = validated_data.get('content', instance.content)
+        instance.is_public = validated_data.get('is_public', instance.is_public)
+        instance.save()
+        return instance
+
+    # Computed fields
     def get_likes_count(self, obj):
-        return obj.likes.count()  # Blog -> Like relation (related_name='likes')
+        return obj.likes.count()  # related_name='likes' байх ёстой
 
     def get_is_liked(self, obj):
         user = self.context['request'].user
-        return obj.likes.filter(user=user).exists()
+        return obj.likes.filter(user=user).exists() if user.is_authenticated else False
 
     def get_is_saved(self, obj):
-        request = self.context.get('request')
-        if request and hasattr(request, 'user') and request.user.is_authenticated:
-            return obj.saves.filter(user=request.user).exists()  # Blog -> Save relation (related_name='saves')
-        return False
+        user = self.context['request'].user
+        return obj.saves.filter(user=user).exists() if user.is_authenticated else False
 
     def get_comment_count(self, obj):
         return obj.comments.count()
+
+
 
 # -----------------------------
 # Save Serializer

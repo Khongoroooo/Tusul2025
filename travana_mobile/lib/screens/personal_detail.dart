@@ -67,7 +67,7 @@ class _PersonalDetailState extends State<PersonalDetailPage> {
           email = data["email"] ?? "";
           profileImageUrl = fixUrl(profile["profile_img"]);
           location = profile["location"] ?? "Ulaanbaatar, Mongolia";
-          phone = profile["phone"] ?? 94148451;
+          phone = profile["phone"];
           aboutMe = profile["bio"] ?? "bio";
         });
       }
@@ -92,7 +92,7 @@ class _PersonalDetailState extends State<PersonalDetailPage> {
 
     if (token == null) return;
 
-    final url = Uri.parse("http://localhost:8000/api/update-profile/");
+    final url = Uri.parse("http://localhost:8000/api/profile/update/");
 
     final Map<String, dynamic> body = {};
     if (username != null) body["username"] = username;
@@ -102,8 +102,12 @@ class _PersonalDetailState extends State<PersonalDetailPage> {
     try {
       final response = await http.patch(
         url,
-        headers: {"Authorization": "Bearer $token"},
-        body: body,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+
+        body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {

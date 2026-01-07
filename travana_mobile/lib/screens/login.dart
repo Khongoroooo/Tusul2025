@@ -27,11 +27,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool isLoading = false; // default false
 
   final _storage = const FlutterSecureStorage(); // Mobile token хадгалах
 
   Future<void> handleLogin() async {
-    final url = Uri.parse('http://127.0.0.1:8000/auth/jwt/create/'); // Django JWT endpoint
+    setState(() => isLoading = true); // login эхлэхэд loading
+
+    final url = Uri.parse(
+      'http://127.0.0.1:8000/auth/jwt/create/',
+    ); // Django JWT endpoint
     try {
       final response = await http.post(
         url,
@@ -53,6 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
           await _storage.write(key: 'access_token', value: token);
         }
 
+        if (!mounted) return;
         // HomePage руу шилжих
         Navigator.pushReplacement(
           context,
@@ -61,19 +67,15 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         final data = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data.toString()),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(data.toString()), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Error: $e"),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
       );
+    } finally {
+      if (mounted) setState(() => isLoading = false); // login дуусмагц
     }
   }
 
@@ -94,7 +96,10 @@ class _LoginScreenState extends State<LoginScreen> {
               onTap: widget.toggleLanguage,
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: const Color.fromARGB(255, 238, 128, 139),
@@ -140,7 +145,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(color: Color(0xFFF8AEB6), width: 1),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFF8AEB6),
+                    width: 1,
+                  ),
                 ),
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(12.0),
@@ -163,7 +171,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
-                  borderSide: const BorderSide(color: Color(0xFFEE808B), width: 1),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFEE808B),
+                    width: 1,
+                  ),
                 ),
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(12.0),
@@ -205,8 +216,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SizedBox(height: screenHeight * 0.1),
 
+            // Login товч
             ElevatedButton(
-              onPressed: handleLogin,
+              onPressed: isLoading ? null : handleLogin,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
                 backgroundColor: const Color.fromARGB(255, 238, 128, 139),
@@ -214,10 +226,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(15),
                 ),
               ),
-              child: Text(
-                S.of(context).signIn,
-                style: const TextStyle(fontSize: 18, color: Colors.white),
-              ),
+              child: isLoading
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(
+                      S.of(context).signIn,
+                      style: const TextStyle(fontSize: 18, color: Colors.white),
+                    ),
             ),
             SizedBox(height: screenHeight * 0.02),
 
